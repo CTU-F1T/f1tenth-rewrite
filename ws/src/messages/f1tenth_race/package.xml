@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+
+	<name>f1tenth_race</name>
+	<version>0.0.0</version>
+	<description>
+		This package is used as a remainder of the old v.0 project. In this
+		version it is temporarily used as an holder for two messages, that
+		are used for communication on the very low level.
+	</description>
+	<maintainer email="klapajar@fel.cvut.cz">Jaroslav Klapálek</maintainer>
+	<license>Apache License 2.0</license>
+	<author email="vajnamar@fel.cvut.cz">Martin Vajnar</author>
+
+	<buildtool_depend>ament_cmake</buildtool_depend>
+	<buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+	<exec_depend>rosidl_default_runtime</exec_depend>
+
+	<member_of_group>rosidl_interface_packages</member_of_group>
+
+	<export>
+		<build_type>ament_cmake</build_type>
+	</export>
+
+</package>

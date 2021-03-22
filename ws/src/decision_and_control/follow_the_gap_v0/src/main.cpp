@@ -37,7 +37,7 @@
 #include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-// #include "tf/transform_datatypes.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 #include "obstacle_msgs/msg/obstacles_stamped.hpp"
 #include "obstacle_msgs/msg/circle_obstacle.hpp"
@@ -187,11 +187,10 @@ void PublishVisualizeFinalHeadingAngle(float final_heading_angle, const std::str
 	geometry_msgs::msg::PoseStamped angle_message;
 	angle_message.header.frame_id = frame_id;
 
-	// TODO: port to tf2
-	//tf::Quaternion angle_quaternion;
-	//angle_quaternion.setEuler(0, 0, final_heading_angle);
-	//angle_quaternion.normalize();
-	//tf::quaternionTFToMsg(angle_quaternion, angle_message.pose.orientation);
+	tf2::Quaternion angle_quaternion;
+	angle_quaternion.setEuler(0, 0, final_heading_angle);
+	angle_quaternion.normalize();
+	tf2::convert(angle_quaternion, angle_message.pose.orientation);
 
 	// TODO: port
 	// publisher_visualize_final_heading_angle.publish(angle_message);

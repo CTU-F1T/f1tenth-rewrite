@@ -42,25 +42,25 @@
 #include "obstacle_msgs/msg/obstacles_stamped.hpp"
 #include "obstacle_msgs/msg/circle_obstacle.hpp"
 
-// ros::NodeHandle *node_handle_pointer;
+rclcpp::Node::SharedPtr node;
 
 int unsigned kPublishMessageBufferSize = 10;
 int unsigned kSubscribeMessageBufferSize = 1;
 
-// ros::Publisher publisher_final_heading_angle;
-// ros::Publisher publisher_gap_found;
-//
-// // For visualizing and debugging
-// ros::Publisher publisher_visualize_largest_gap;
-// ros::Publisher publisher_visualize_final_heading_angle;
-// ros::Publisher publisher_visualize_obstacles;
+rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr publisher_final_heading_angle;
+rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr publisher_gap_found;
+
+// For visualizing and debugging
+rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr publisher_visualize_largest_gap;
+rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr publisher_visualize_final_heading_angle;
+rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr publisher_visualize_obstacles;
 
 
 //////////////////////
 // Utility functions
 //////////////////////
 
-std::vector<FollowTheGap::Obstacle> CreateObstacles(sensor_msgs::msg::LaserScan::ConstSharedPtr const &lidar_data) {
+std::vector<FollowTheGap::Obstacle> CreateObstacles(sensor_msgs::msg::LaserScan::ConstSharedPtr &lidar_data) {
 
 	size_t const data_size = lidar_data->ranges.size();
 
@@ -104,7 +104,7 @@ std::vector<FollowTheGap::Obstacle> CreateObstacles(sensor_msgs::msg::LaserScan:
 }
 
 std::vector<FollowTheGap::Obstacle> CreateObstacles(
-	obstacle_msgs::msg::ObstaclesStamped::ConstSharedPtr const &obstacles_data
+	obstacle_msgs::msg::ObstaclesStamped::ConstSharedPtr obstacles_data
 ) {
 
 	size_t const data_size = obstacles_data->obstacles.circles.size();
@@ -178,8 +178,7 @@ std::vector<FollowTheGap::Obstacle> CreateObstaclesWithAngleFilter(
 void PublishFinalHeadingAngle(float final_heading_angle) {
 	std_msgs::msg::Float32 final_heading_angle_message;
 	final_heading_angle_message.data = final_heading_angle;
-	// TODO: port
-	// publisher_final_heading_angle.publish(final_heading_angle_message);
+	publisher_final_heading_angle->publish(final_heading_angle_message);
 }
 
 void PublishVisualizeFinalHeadingAngle(float final_heading_angle, const std::string &frame_id) {
@@ -192,8 +191,7 @@ void PublishVisualizeFinalHeadingAngle(float final_heading_angle, const std::str
 	angle_quaternion.normalize();
 	tf2::convert(angle_quaternion, angle_message.pose.orientation);
 
-	// TODO: port
-	// publisher_visualize_final_heading_angle.publish(angle_message);
+	publisher_visualize_final_heading_angle->publish(angle_message);
 
 }
 
@@ -214,10 +212,9 @@ void PublishVisualizeLargestGap(
 	p1.point.y = gap_right.distance * std::sin(gap_right.angle_left);
 	p1.header.frame_id = frame_id;
 
-	// TODO: port
-	// publisher_visualize_largest_gap.publish(robot_point);
-	// publisher_visualize_largest_gap.publish(p0);
-	// publisher_visualize_largest_gap.publish(p1);
+	publisher_visualize_largest_gap->publish(robot_point);
+	publisher_visualize_largest_gap->publish(p0);
+	publisher_visualize_largest_gap->publish(p1);
 
 }
 
@@ -246,15 +243,13 @@ void PublishVisualizeObstacles(
 		obstacle_points.points.push_back(p);
 	}
 
-	// TODO: port
-	// publisher_visualize_obstacles.publish(obstacle_points);
+	publisher_visualize_obstacles->publish(obstacle_points);
 }
 
 void PublishGapFound(bool gap_found) {
 	std_msgs::msg::Bool gap_found_message;
 	gap_found_message.data = gap_found;
-	// TODO: port
-	// publisher_gap_found.publish(gap_found_message);
+	publisher_gap_found->publish(gap_found_message);
 }
 
 
@@ -262,7 +257,7 @@ void PublishGapFound(bool gap_found) {
 // Callbacks
 //////////////////////
 
-void Callback(sensor_msgs::msg::LaserScan::ConstSharedPtr const &lidar_data) {
+void Callback(sensor_msgs::msg::LaserScan::ConstSharedPtr lidar_data) {
 
 	LidarData ld(
 		lidar_data->range_min,
@@ -297,7 +292,7 @@ void Callback(sensor_msgs::msg::LaserScan::ConstSharedPtr const &lidar_data) {
 // Note: This method does not yield the same results as the original LiDAR method.It is
 // most likely caused by different rounding (Py / C++).
 void ObstaclesCallback(
-	obstacle_msgs::msg::ObstaclesStamped::ConstSharedPtr const &obstacles_data
+	obstacle_msgs::msg::ObstaclesStamped::ConstSharedPtr obstacles_data
 ) {
 
 	std::vector<FollowTheGap::Obstacle> obstacles = CreateObstacles(obstacles_data);
@@ -325,15 +320,15 @@ void ObstaclesCallback(
 
 }
 
-void AngleFilterLeftCallback(std_msgs::msg::Int32::ConstSharedPtr const &message) {
+void AngleFilterLeftCallback(std_msgs::msg::Int32::ConstSharedPtr message) {
 	FollowTheGap::AngleFilter::left_index = message->data;
 }
 
-void AngleFilterRightCallback(std_msgs::msg::Int32::ConstSharedPtr const &message) {
+void AngleFilterRightCallback(std_msgs::msg::Int32::ConstSharedPtr message) {
 	FollowTheGap::AngleFilter::right_index = message->data;
 }
 
-void GoalAngleCallback(std_msgs::msg::Float64::ConstSharedPtr const &message) {
+void GoalAngleCallback(std_msgs::msg::Float64::ConstSharedPtr message) {
 	FollowTheGap::g_goal_angle = message->data;
 }
 
@@ -348,58 +343,68 @@ int main(int argc, char **argv) {
 	std::cout << "Warning: FilterLoneObstacleGroups is disabled." << std::endl;
 
 	rclcpp::init(argc, argv);
-	// ros::init(argc, argv, "follow_the_gap");
 
-	// node_handle_pointer = new ros::NodeHandle;
-	std::shared_ptr<rclcpp::Node> node = rclcpp::Node::make_shared("follow_the_gap");
+	node = rclcpp::Node::make_shared("follow_the_gap");
 
+	// Subscriptions
 
-/*
-    // Subscribers
+	auto subscription_lidar_data = node->create_subscription<sensor_msgs::msg::LaserScan>(
+		"/scan",
+		kSubscribeMessageBufferSize,
+		Callback
+	);
 
-    // ros::Subscriber lidar_data_subscriber = node_handle_pointer
-    //     ->subscribe("/scan", kSubscribeMessageBufferSize,
-    //             Callback
-    // );
+	auto subscription_obstacle_data = node->create_subscription<obstacle_msgs::msg::ObstaclesStamped>(
+		"/obstacles",
+		kSubscribeMessageBufferSize,
+		ObstaclesCallback
+	);
 
-    // ros::Subscriber obstacle_data_subscriber = node_handle_pointer
-    //     ->subscribe("/obstacles", kSubscribeMessageBufferSize,
-    //             ObstaclesCallback
-    // );
+	auto subscription_angle_filter_right = node->create_subscription<std_msgs::msg::Int32>(
+		"/right_constraint_index",
+		kSubscribeMessageBufferSize,
+		AngleFilterRightCallback
+	);
 
-    // ros::Subscriber angle_filter_subscriber_right = node_handle_pointer
-    //     ->subscribe("/right_constraint_index", kSubscribeMessageBufferSize,
-    //             AngleFilterRightCallback
-    // );
+	auto subscription_angle_filter_left = node->create_subscription<std_msgs::msg::Int32>(
+		"/left_constraint_index",
+		kSubscribeMessageBufferSize,
+		AngleFilterLeftCallback
+	);
 
-    // ros::Subscriber angle_filter_subscriber_left = node_handle_pointer
-    //     ->subscribe("/left_constraint_index", kSubscribeMessageBufferSize,
-    //             AngleFilterLeftCallback
-    // );
+	auto goal_angle_subscription = node->create_subscription<std_msgs::msg::Float64>(
+		"/lsr/angle",
+		kSubscribeMessageBufferSize,
+		GoalAngleCallback
+	);
 
-    // ros::Subscriber goal_angle_subscriber = node_handle_pointer
-    //     ->subscribe("/lsr/angle", kSubscribeMessageBufferSize,
-    //             GoalAngleCallback
-    // );
+	// Publishers
 
+	publisher_final_heading_angle = node->create_publisher<std_msgs::msg::Float32>(
+		"/final_heading_angle",
+		kPublishMessageBufferSize
+	);
 
-    // // Publishers
-    // publisher_final_heading_angle = node_handle_pointer
-    //     ->advertise<std_msgs::msg::Float32>("/final_heading_angle", kPublishMessageBufferSize);
+	publisher_gap_found = node->create_publisher<std_msgs::msg::Bool>(
+		"/gap_found",
+		kPublishMessageBufferSize
+	);
 
-    // publisher_gap_found = node_handle_pointer
-    //     ->advertise<std_msgs::msg::Bool>("/gap_found", kPublishMessageBufferSize);
+	publisher_visualize_largest_gap = node->create_publisher<geometry_msgs::msg::PointStamped>(
+		"/visualize_largest_gap",
+		kPublishMessageBufferSize
+	);
 
-    // publisher_visualize_largest_gap = node_handle_pointer
-    //     ->advertise<geometry_msgs::msg::PointStamped>("/visualize_largest_gap", kPublishMessageBufferSize);
+	publisher_visualize_final_heading_angle = node->create_publisher<geometry_msgs::msg::PoseStamped>(
+		"/visualize_final_heading_angle",
+		kPublishMessageBufferSize
+	);
 
-    // publisher_visualize_final_heading_angle = node_handle_pointer
-    //     ->advertise<geometry_msgs::msg::PoseStamped>("/visualize_final_heading_angle", kPublishMessageBufferSize);
+	publisher_visualize_obstacles = node->create_publisher<visualization_msgs::msg::Marker>(
+		"/visualize_obstacles",
+		kPublishMessageBufferSize
+	);
 
-    // publisher_visualize_obstacles = node_handle_pointer
-    //     ->advertise<visualization_msgs::Marker>("/visualize_obstacles", kPublishMessageBufferSize);
-
-*/
 	rclcpp::spin(node);
 	rclcpp::shutdown();
 

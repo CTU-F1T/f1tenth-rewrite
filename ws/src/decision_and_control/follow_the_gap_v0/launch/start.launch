@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+  Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
+  Description: Launch a node with Follow the Gap algorithm.
+-->
+<launch>
+  <arg name="/scan" default="/scan" doc="Topic for remapping the '/scan'." />
+  <arg name="/obstacles" default="/obstacles" doc="Topic for remapping the '/obstacles'." />
+  <arg name="/final_heading_angle" default="/final_heading_angle" doc="Topic for remapping the '/final_heading_angle'." />
+  <arg name="/drive_api/command" default="/drive_api/command" doc="Topic for remapping the '/drive_api/command'." />
+  <arg name="remap" default="false" doc="When true use arguments above for remapping." />
+
+  <node pkg="follow_the_gap_v0" type="follow_the_gap" name="$(anon follow_the_gap)" output="screen">
+    <remap from="/scan" to="$(arg /scan)" if="$(arg remap)" />
+    <remap from="/obstacles" to="$(arg /obstacles)" if="$(arg remap)" />
+    <remap from="/final_heading_angle" to="$(arg /final_heading_angle)" if="$(arg remap)" />
+  </node>
+
+  <node pkg="follow_the_gap_v0" type="follow_the_gap_ride.py" name="$(anon follow_the_gap_ride)">
+    <remap from="/final_heading_angle" to="$(arg /final_heading_angle)" if="$(arg remap)" />
+    <remap from="/drive_api/command" to="$(arg /drive_api/command)" if="$(arg remap)" />
+  </node>
+
+</launch>

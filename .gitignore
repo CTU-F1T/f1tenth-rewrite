@@ -37,13 +37,15 @@ captures
 /ws/log/
 /ws/install/
 /ws/build/
-/ws/.env
 
 # symlink to ws/build/compile_commands.json for easily opening the project
 # in CLion as "Compilation Database Project"
 /compile_commands.json
 # note: in the future, we might it version
 /.idea/
+
+# correct PYTHONPATH for VSCode's pylint and other tools
+.env
 
 # Python caches
 __pycache__

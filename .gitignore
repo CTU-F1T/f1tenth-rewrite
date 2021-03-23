@@ -43,6 +43,7 @@ captures
 /compile_commands.json
 # note: in the future, we might it version
 /.idea/
+/ws/.idea/
 
 # correct PYTHONPATH for VSCode's pylint and other tools
 .env

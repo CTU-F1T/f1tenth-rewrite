@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!--
+  Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
+  Description: Launch a Drive-API node.
+-->
+<launch>
+  <arg name="/drive_api/command" default="/drive_api/command" doc="Topic for remapping the '/drive_api/command'." />
+  <arg name="/drive_pwm" default="/drive_pwm" doc="Topic for remapping the '/drive_pwm'." />
+  <arg name="/cmd_vel" default="/cmd_vel" doc="Topic for remapping the '/cmd_vel'." />
+  <arg name="/eStop" default="/eStop" doc="Topic for remapping the '/eStop'." />
+  <arg name="remap" default="false" doc="When true use arguments above for remapping." />
+
+  <arg name="anonymous" default="false" doc="When true run a node as anonymous." />
+
+  <arg name="node_name" value="$(anon drive_api)" if="$(arg anonymous)" />
+  <arg name="node_name" value="drive_api" unless="$(arg anonymous)" />
+
+  <arg name="simulation" default="false" doc="When true run the node in simulation mode" />
+  <!-- Note: 'simulation' is also implied by 'anonymous'.
+             When 'anonymous' is true, node is run in simulation mode as well. -->
+
+  <arg name="use_vesc" default="false" doc="When true speed is published directly to VESC rather than to Teensy." />
+
+  <arg name="rate" default="10" doc="Publish rate of the Drive-API messages." />
+
+  <arg name="speed_modifier" default="1.0" doc="Speed modifier for simulation mode ONLY." if="$(arg simulation)" />
+  <arg name="steer_modifier" default="1.0" doc="Steering modifier for simulation mode ONLY." if="$(arg simulation)" />
+
+  <node pkg="drive_api" type="drive_api_node.py" name="$(arg node_name)" output="screen" args="anonymous=$(arg anonymous) simulation=$(arg simulation) use_vesc=$(arg use_vesc)">
+    <remap from="/drive_api/command" to="$(arg /drive_api/command)" if="$(arg remap)" />
+    <remap from="/drive_pwm" to="$(arg /drive_pwm)" if="$(arg remap)" />
+    <remap from="/cmd_vel" to="$(arg /cmd_vel)" if="$(arg remap)" />
+    <remap from="/eStop" to="$(arg /eStop)" if="$(arg remap)" />
+
+    <param name="rate" type="int" value="$(arg rate)" if="$(eval arg('rate') != 10)"/>
+    <param name="speed_modifier" type="double" value="$(arg speed_modifier)" if="$(arg simulation)" />
+    <param name="steer_modifier" type="double" value="$(arg steer_modifier)" if="$(arg simulation)" />
+  </node>
+</launch>

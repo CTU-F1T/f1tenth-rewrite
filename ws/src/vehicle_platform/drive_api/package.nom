@@ -1,0 +1,10 @@
+[<vehicleplatform>drive_api|
+Unified API for controlling
+the remote cars.
+]
+[<state> /drive_api/command|drive_api/drive_api_values]->[drive_api]
+[<state> /command|command_msgs/CommandArrayStamped]->[drive_api]
+[<state> /eStop|std_msgs/Bool]->[drive_api]
+[drive_api]->[<state> /drive_pwm|teensy/drive_values]
+[drive_api]-->[<state> /cmd_vel|geometry_msgs/Twist]
+[drive_api]-->[<state> /commands/motor/speed|std_msgs/Float64]

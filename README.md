@@ -26,11 +26,14 @@
 
 ## Notes
 
-* ROS 2 _pure_ Python package cannot contain IDL definitions (messages, services)
-    _(at least for now, it may be supported in the future)_.
-    It is possible use ament_cmake with Python code but I am not sure
-    if `colcon build --symlink-install` option works then.
-    And also it is unnecessary verbose.  
+
+### Pure Python Package cannot contain messages
+
+ROS 2 _pure_ Python package cannot contain IDL definitions (messages, services)
+_(at least for now, it may be supported in the future)_.
+It is possible use ament_cmake with Python code but I am not sure
+if `colcon build --symlink-install` option works then.
+And also it is unnecessary verbose.  
 
 
 ### Launch files are not symlinked
@@ -47,3 +50,10 @@ We have several possible **workarounds**:
     The idea comes from https://github.com/colcon/colcon-core/issues/169#issuecomment-531517276
 2. Another possible workaround is mentioned here (although it seems rather impractical) https://github.com/ros2/launch/issues/187#issuecomment-468667696.
 3. We could create a script to manually symlink them after build (while doing dev). But that would be tiresome and error-prone.
+
+
+### Others
+
+* **There is no "global parameter server" in ROS 2**
+    * see https://discourse.ros.org/t/ros2-global-parameter-server-status/10114
+    * see https://github.com/fujitatomoya/ros2_persist_parameter_server

@@ -45,7 +45,7 @@ SIMULATION (simulation=True)
 For controlling the speed and steering, following control modes are available:
 LEGACY
  In LEGACY control mode, speed/steering value is specified in range from 0 to 1 (both included)
- and a direction. Boundary values have unordinary meaning -- 0 represents lowest possible
+ and a direction. Boundary values have unusual meaning -- 0 represents lowest possible
  speed/steering, 1 represents highest possible speed/steering. Using values lower than 0 results
  in stopping the vehicle/resetting the steering. Values larger than 1 are ignored.
 JOINT
@@ -65,8 +65,17 @@ ANGULAR
 # Imports & Globals
 ######################
 
-# ROS python package
-import rospy
+from typing import List, Tuple, Any, Dict
+
+# ROS 2 Python Client API
+import rclpy
+from rclpy.node import Node
+from rcl_interfaces.msg import \
+    ParameterDescriptor, \
+    ParameterType, \
+    Parameter, \
+    SetParametersResult, \
+    FloatingPointRange
 
 # PI constant
 from math import pi
@@ -111,19 +120,19 @@ try:
     #: float64 value
 
     USE_COMMANDS = True
-except:
-    print >> sys.stderr, "Unable to find Command* messages. Subscriber will be disabled."
+except ImportError:
+    print('Unable to find Command* messages. Subscriber will be disabled.', file=sys.stderr)
     USE_COMMANDS = False
 
 # drive_values
-from teensy.msg import drive_values
+from teensy.msg import DriveValues
 
 # int16 pwm_drive           # PWM duty cycle (0-100%) corresponds to (0-65535) interval
 # int16 pwm_angle
 
 try:
     # drive_api_values
-    from drive_api.msg import drive_api_values
+    from drive_api_msgs.msg import DriveApiValues
 
     # float64 velocity          # allowed <0; 1>, positive values for forward direction
     # bool forward              # if true go forward, otherwise backwards
@@ -132,8 +141,8 @@ try:
     # Note: Using negative values for velocity/steering will stop car/make it go straight.
 
     USE_DAPI_COMMANDS = True
-except:
-    print >> sys.stderr, "Unable to find drive_api_values message. Subscriber will be disabled."
+except ImportError:
+    print('Unable to find drive_api_values message. Subscriber will be disabled.', file=sys.stderr)
     USE_DAPI_COMMANDS = False
 
 # Float64
@@ -160,7 +169,7 @@ pub_cmd_vel = None  # rospy.Publisher('cmd_vel', Twist, queue_size=1)
 pub_vesc = None  # rospy.Publisher('commands/motor/speed', Float64, queue_size=1)
 
 # Global variables
-msg = drive_values()
+msg = DriveValues()
 msg_vesc = Float64()
 msg_cmd_vel = Twist()
 lock = threading.Lock()
@@ -246,7 +255,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
         if direction == Direction.BACKWARD:
             with lock:
                 if run_mode == RunMode.BASIC:
-                    if constants.has_key("BACKWARD_MIN") and constants.has_key("BACKWARD"):
+                    if ('BACKWARD_MIN' in constants) and ('BACKWARD' in constants):
                         msg.pwm_drive = int(constants['BACKWARD_MIN'] + speed * constants['BACKWARD'])
                     else:
                         rospy.logerr("Unable to compute PWM speed because 'BACKWARD_MAX' / 'BACKWARD_MIN' is not set.")
@@ -256,7 +265,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
                     msg_cmd_vel.linear.x = -speed * constants['SIM_SPEEDUP']
 
                 elif run_mode == RunMode.BASIC_VESC:
-                    if constants.has_key("ERPM_MAX"):
+                    if 'ERPM_MAX' in constants:
                         msg_vesc.data = -speed * constants['ERPM_MAX']
                     else:
                         rospy.logerr("Unable to compute VESC speed because 'ERPM_MAX' is not set.")
@@ -265,7 +274,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
         elif direction == Direction.FORWARD:
             with lock:
                 if run_mode == RunMode.BASIC:
-                    if constants.has_key("FORWARD_MIN") and constants.has_key("FORWARD"):
+                    if ('FORWARD_MIN' in constants) and ('FORWARD' in constants):
                         msg.pwm_drive = int(constants['FORWARD_MIN'] + speed * constants['FORWARD'])
                     else:
                         rospy.logerr("Unable to compute PWM speed because 'FORWARD_MAX' / 'FORWARD_MIN' is not set.")
@@ -275,7 +284,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
                     msg_cmd_vel.linear.x = speed * constants['SIM_SPEEDUP']
 
                 elif run_mode == RunMode.BASIC_VESC:
-                    if constants.has_key("ERPM_MAX"):
+                    if 'ERPM_MAX' in constants:
                         msg_vesc.data = speed * constants['ERPM_MAX']
                     else:
                         rospy.logerr("Unable to compute VESC speed because 'ERPM_MAX' is not set.")
@@ -295,11 +304,13 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
         # Set corresponding variable
         if speed == 0:
             stop()
-        elif (direction == Direction.FORWARD and speed > 0) \
-            or (direction == Direction.BACKWARD and speed < 0):
+        elif (
+            (direction == Direction.FORWARD and speed > 0)
+            or (direction == Direction.BACKWARD and speed < 0)
+        ):
             with lock:
                 if run_mode == RunMode.BASIC:
-                    if constants.has_key("FORWARD_MIN") and constants.has_key("FORWARD"):
+                    if ('FORWARD_MIN' in constants) and ('FORWARD' in constants):
                         msg.pwm_drive = int(constants['FORWARD_MIN'] + abs(speed) * constants['FORWARD'])
                     else:
                         rospy.logerr("Unable to compute PWM speed because 'FORWARD_MAX' / 'FORWARD_MIN' is not set.")
@@ -309,17 +320,19 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
                     msg_cmd_vel.linear.x = abs(speed) * constants['SIM_SPEEDUP']
 
                 elif run_mode == RunMode.BASIC_VESC:
-                    if constants.has_key("ERPM_MAX"):
+                    if 'ERPM_MAX' in constants:
                         msg_vesc.data = abs(speed) * constants['ERPM_MAX']
                     else:
                         rospy.logerr("Unable to compute VESC speed because 'ERPM_MAX' is not set.")
                         return False
 
-        elif (direction == Direction.BACKWARD and speed > 0) \
-            or (direction == Direction.FORWARD and speed < 0):
+        elif (
+            (direction == Direction.BACKWARD and speed > 0)
+            or (direction == Direction.FORWARD and speed < 0)
+        ):
             with lock:
                 if run_mode == RunMode.BASIC:
-                    if constants.has_key("BACKWARD_MIN") and constants.has_key("BACKWARD"):
+                    if ('BACKWARD_MIN' in constants) and ('BACKWARD' in constants):
                         msg.pwm_drive = int(constants['BACKWARD_MIN'] + abs(speed) * constants['BACKWARD'])
                     else:
                         rospy.logerr("Unable to compute PWM speed because 'BACKWARD_MAX' / 'BACKWARD_MIN' is not set.")
@@ -329,7 +342,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
                     msg_cmd_vel.linear.x = -abs(speed) * constants['SIM_SPEEDUP']
 
                 elif run_mode == RunMode.BASIC_VESC:
-                    if constants.has_key("ERPM_MAX"):
+                    if 'ERPM_MAX' in constants:
                         msg_vesc.data = -abs(speed) * constants['ERPM_MAX']
                     else:
                         rospy.logerr("Unable to compute VESC speed because 'ERPM_MAX' is not set.")
@@ -353,7 +366,7 @@ def setSpeed(speed, direction, control_mode=ControlMode.LEGACY):
         elif run_mode == RunMode.SIMULATION:
             with lock:
                 msg_cmd_vel.linear.x = speed
-        elif constants.has_key("TO_ERPM"):
+        elif 'TO_ERPM' in constants:
             with lock:
                 msg_vesc.data = speed * constants["TO_ERPM"]
         else:
@@ -388,7 +401,7 @@ def stop():
         return False
 
     with lock:
-        if constants.has_key("CALM_SPEED"):
+        if 'CALM_SPEED' in constants:
             msg.pwm_drive = constants['CALM_SPEED']
 
         msg_cmd_vel.linear.x = 0
@@ -457,7 +470,7 @@ def setSteer(steer, direction, control_mode=ControlMode.LEGACY):
         # Set corresponding variable
         if direction == Direction.LEFT:
             with lock:
-                if constants.has_key("LEFT_MIN") and constants.has_key("LEFT"):
+                if ('LEFT_MIN' in constants) and ('LEFT' in constants):
                     msg.pwm_angle = int(constants['LEFT_MIN'] + steer * constants['LEFT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'LEFT_MAX' / 'LEFT_MIN' is not set.")
@@ -465,7 +478,7 @@ def setSteer(steer, direction, control_mode=ControlMode.LEGACY):
 
         elif direction == Direction.RIGHT:
             with lock:
-                if constants.has_key("RIGHT_MIN") and constants.has_key("RIGHT"):
+                if ('RIGHT_MIN' in constants) and ('RIGHT' in constants):
                     msg.pwm_angle = int(constants['RIGHT_MIN'] + steer * constants['RIGHT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'RIGHT_MAX' / 'RIGHT_MIN' is not set.")
@@ -496,19 +509,23 @@ def setSteer(steer, direction, control_mode=ControlMode.LEGACY):
         # Set corresponding variable
         if steer == 0:
             resetSteer()
-        elif (direction == Direction.LEFT and steer > 0) \
-            or (direction == Direction.RIGHT and steer < 0):
+        elif (
+            (direction == Direction.LEFT and steer > 0)
+            or (direction == Direction.RIGHT and steer < 0)
+        ):
             with lock:
-                if constants.has_key("LEFT_MIN") and constants.has_key("LEFT"):
+                if ('LEFT_MIN' in constants) and ('LEFT' in constants):
                     msg.pwm_angle = int(constants['LEFT_MIN'] + abs(steer) * constants['LEFT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'LEFT_MAX' / 'LEFT_MIN' is not set.")
                     return False
 
-        elif (direction == Direction.RIGHT and steer > 0) \
-            or (direction == Direction.LEFT and steer < 0):
+        elif (
+            (direction == Direction.RIGHT and steer > 0)
+            or (direction == Direction.LEFT and steer < 0)
+        ):
             with lock:
-                if constants.has_key("RIGHT_MIN") and constants.has_key("RIGHT"):
+                if ('RIGHT_MIN' in constants) and ('RIGHT' in constants):
                     msg.pwm_angle = int(constants['RIGHT_MIN'] + abs(steer) * constants['RIGHT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'RIGHT_MAX' / 'RIGHT_MIN' is not set.")
@@ -532,33 +549,36 @@ def setSteer(steer, direction, control_mode=ControlMode.LEGACY):
             return True
 
         # Check the required parameters
-        if not constants.has_key("SERVO_LEFT_MAX") or not constants.has_key("SERVO_RIGHT_MAX"):
+        if ('SERVO_LEFT_MAX' not in constants) or ('SERVO_RIGHT_MAX' not in constants):
             rospy.logerr("Unable to compute PWM steer because 'SERVO_LEFT_MAX' / 'SERVO_RIGHT_MAX' is not set.")
             return False
 
         if steer == 0:
             resetSteer()
-        elif (direction == Direction.LEFT and steer > 0) \
-            or (direction == Direction.RIGHT and steer < 0):
+        elif (
+            (direction == Direction.LEFT and steer > 0)
+            or (direction == Direction.RIGHT and steer < 0)
+        ):
             with lock:
-                if constants.has_key("LEFT_MIN") and constants.has_key("LEFT"):
+                if ('LEFT_MIN' in constants) and ('LEFT' in constants):
                     msg.pwm_angle = int(
                         constants['LEFT_MIN'] + min(abs(steer) / constants['SERVO_LEFT_MAX'], 1.0) * constants['LEFT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'LEFT_MAX' / 'LEFT_MIN' is not set.")
                     return False
 
-        elif (direction == Direction.RIGHT and steer > 0) \
-            or (direction == Direction.LEFT and steer < 0):
+        elif (
+            (direction == Direction.RIGHT and steer > 0)
+            or (direction == Direction.LEFT and steer < 0)
+        ):
             with lock:
-                if constants.has_key("RIGHT_MIN") and constants.has_key("RIGHT"):
+                if ('RIGHT_MIN' in constants) and ('RIGHT' in constants):
                     msg.pwm_angle = int(
                         constants['RIGHT_MIN'] + min(abs(steer) / constants['SERVO_RIGHT_MAX'], 1.0) * constants[
                             'RIGHT'])
                 else:
                     rospy.logerr("Unable to compute PWM steer because 'RIGHT_MAX' / 'RIGHT_MIN' is not set.")
                     return False
-
 
     else:
         rospy.logerr("Unsupported data format.")
@@ -588,7 +608,7 @@ def resetSteer():
         return False
 
     with lock:
-        if constants.has_key("CALM_STEER"):
+        if 'CALM_STEER' in constants:
             msg.pwm_angle = constants['CALM_STEER']
 
         msg_cmd_vel.angular.z = 0
@@ -601,8 +621,8 @@ def resetSteer():
 def api_callback(data):
     """Obtain requested speed/steering from ROS topic.
 
-	Arguments:
-	data -- structure received on topic /drive_api/command, defined by drive_api_values
+    Arguments:
+    data -- structure received on topic /drive_api/command, defined by drive_api_values
     """
 
     if data.velocity < 0:
@@ -741,7 +761,7 @@ def publish_with_vesc():
     global lock
 
     with lock:
-        pub.publish(drive_values(constants['CALM_SPEED'], msg.pwm_angle))
+        pub.publish(DriveValues(pwm_drive=constants['CALM_SPEED'], pwm_angle=msg.pwm_angle))
         pub_vesc.publish(msg_vesc)
 
 
@@ -772,7 +792,7 @@ def publisher(init_node=True, create_callbacks=False, anonymous=False, simulatio
     # Create callbacks if requested
     if create_callbacks:
         if USE_DAPI_COMMANDS:
-            rospy.Subscriber("/drive_api/command", drive_api_values, api_callback, queue_size=1)
+            rospy.Subscriber("/drive_api/command", DriveApiValues, api_callback, queue_size=1)
 
         if USE_COMMANDS:
             rospy.Subscriber("/command", CommandArrayStamped, command_callback, queue_size=1)
@@ -803,14 +823,14 @@ def publisher(init_node=True, create_callbacks=False, anonymous=False, simulatio
     if run_mode == RunMode.SIMULATION:
         pub_cmd_vel = rospy.Publisher('cmd_vel', Twist, queue_size=1)
     else:
-        pub = rospy.Publisher('drive_pwm', drive_values, queue_size=1)
+        pub = rospy.Publisher('drive_pwm', DriveValues, queue_size=1)
 
     # Attach publish function
-    if use_vesc and constants.has_key("CALM_SPEED") and constants.has_key("CALM_STEER"):
+    if use_vesc and ('CALM_SPEED' in constants) and ('CALM_STEER' in constants):
         pub_function = publish_with_vesc
     elif simulation:
         pub_function = publish_sim
-    elif constants.has_key("CALM_SPEED") and constants.has_key("CALM_STEER"):
+    elif ('CALM_SPEED' in constants) and ('CALM_STEER' in constants):
         pub_function = publish
     else:
         rospy.logerr("Unable to attach a publish function. Shutting down the node.")
@@ -836,7 +856,7 @@ def constFromParamServer(kwargs):
     try:
         params = rospy.get_param("parameters")
     except:
-        print >> sys.stderr, "Error during receiving constants from Parameter Server. Are they set?"
+        print("Error during receiving constants from Parameter Server. Are they set?", file=sys.stderr)
 
     # Reach for constants separately as we can work with one set only.
     try:
@@ -853,8 +873,7 @@ def constFromParamServer(kwargs):
         # Set calm state
         stop()
     except:
-        print
-        "Error during receiving constants for PWM driving. It will be disabled."
+        print("Error during receiving constants for PWM driving. It will be disabled.", file=sys.stderr)
 
     try:
         constants['CALM_STEER'] = params.get("lat").get("calm")
@@ -870,8 +889,7 @@ def constFromParamServer(kwargs):
         # Set calm state
         resetSteer()
     except:
-        print
-        "Error during receiving constants for PWM steering. It will be disabled."
+        print("Error during receiving constants for PWM steering. It will be disabled.", file=sys.stderr)
 
     # VESC control constants
     if kwargs.get("use_vesc"):
@@ -882,24 +900,38 @@ def constFromParamServer(kwargs):
                 constants['ERPM_MAX'] = (params.get("motor").get("poles") / 2.0) * params.get("motor").get("back_emf") \
                                         * params.get("battery").get("cells") * params.get("battery").get("voltage")
             except:
-                print >> sys.stderr, "Unable to receive and compute 'ERPM_MAX' parameter for 'LEGACY' and 'JOINT' control modes. They will be disabled."
+                print(
+                    "Unable to receive and compute 'ERPM_MAX' parameter for 'LEGACY'"
+                    "and 'JOINT' control modes.They will be disabled.",
+                    file=sys.stderr,
+                )
 
         try:
             constants['TO_ERPM'] = 1.0 * params.get("motor").get("to_erpm")
         except:
             try:
                 constants['TO_ERPM'] = (params.get("motor").get("poles") / 2.0) \
-                                       * (1.0 * params.get("differential").get("spur") / params.get("motor").get(
-                    "pinion")) \
-                                       * (1.0 * params.get("differential").get("ring") / params.get("differential").get(
-                    "pinion")) \
+                                       * (
+                                           1.0 * params.get("differential").get("spur")
+                                           / params.get("motor").get("pinion")
+                                       ) \
+                                       * (
+                                           1.0 * params.get("differential").get("ring")
+                                           / params.get("differential").get("pinion")
+                                       ) \
                                        / (2.0 * pi * params.get("wheels").get("radius")) \
                                        * 60
             except:
-                print >> sys.stderr, "Unable to receive and compute 'TO_ERPM' parameter for 'METRIC' control mode. It will be disabled."
+                print(
+                    "Unable to receive and compute 'TO_ERPM' parameter for 'METRIC' control mode. It will be disabled.",
+                    file=sys.stderr
+                )
 
-        if not constants.has_key("ERPM_MAX") and not constants.has_key("TO_ERPM"):
-            print >> sys.stderr, "Unable to receive any constants for VESC control. Reverting to original method."
+        if ('ERPM_MAX' not in constants) and ('TO_ERPM' not in constants):
+            print(
+                "Unable to receive any constants for VESC control. Reverting to original method.",
+                file=sys.stderr,
+            )
             kwargs["use_vesc"] = False
 
     # Angular control constants
@@ -921,7 +953,7 @@ def init(file_dest, init_node=True, use_vesc=False):
     ok = load_constants(file_dest, use_vesc)
 
     if not ok:
-        print >> sys.stderr, "Encountered error during initialization. Exiting."
+        print('Encountered error during initialization. Exiting.', file=sys.stderr)
         return
 
     t = threading.Thread(target=publisher, args=[init_node, False, False, False, use_vesc])
@@ -941,23 +973,27 @@ def load_constants(file_dest, use_vesc):
         constants = json.loads(f.read())
 
     # Compute rest of the constants
-    if constants.has_key("CALM_SPEED"):
+    if 'CALM_SPEED' in constants:
         constants['FORWARD'] = constants['FORWARD_MAX'] - constants['FORWARD_MIN']
         constants['BACKWARD'] = constants['BACKWARD_MAX'] - constants['BACKWARD_MIN']
 
-    if constants.has_key("CALM_STEER"):
+    if 'CALM_STEER' in constants:
         constants['LEFT'] = constants['LEFT_MAX'] - constants['LEFT_MIN']
         constants['RIGHT'] = constants['RIGHT_MAX'] - constants['RIGHT_MIN']
 
     if use_vesc:
-        if not constants.has_key('ERPM_MAX'):
+        if 'ERPM_MAX' not in constants:
             try:
                 constants['ERPM_MAX'] = constants['MOTOR_BACK_EMF'] \
-                                        * constants['BATTERY_CELLS'] * constants['BATTERY_CELL_VOLTAGE']
+                                        * constants['BATTERY_CELLS'] \
+                                        * constants['BATTERY_CELL_VOLTAGE']
             except:
-                print >> sys.stderr, "Unable to read and compute 'ERPM_MAX' constant, disabling control modes 'LEGACY' and 'JOINT'."
+                print(
+                    "Unable to read and compute 'ERPM_MAX' constant, disabling control modes 'LEGACY' and 'JOINT'.",
+                    file=sys.stderr,
+                )
 
-        if not constants.has_key('TO_ERPM'):
+        if 'TO_ERPM' not in constants:
             try:
                 constants['TO_ERPM'] = (constants['MOTOR_POLES'] / 2.0) \
                                        * (1.0 * constants['DIFF_MOTOR_SPUR'] / constants['MOTOR_DIFF_PINION']) \
@@ -965,7 +1001,10 @@ def load_constants(file_dest, use_vesc):
                                        / (2.0 * pi * constants['WHEEL_RADIUS']) \
                                        * 60
             except:
-                print >> sys.stderr, "Unable to read and compute 'TO_ERPM' constant, disabling control mode 'METRIC'."
+                print(
+                    "Unable to read and compute 'TO_ERPM' constant, disabling control mode 'METRIC'.",
+                    file=sys.stderr,
+                )
 
     # Set calm states
     stop()

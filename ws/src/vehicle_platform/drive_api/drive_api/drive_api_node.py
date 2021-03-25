@@ -112,6 +112,10 @@ class ControlMode(Enum):
     ANGULAR = 3
 
 
+class InitError(Exception):
+    pass
+
+
 class DriveApiNode(Node):
 
     def __init__(self, create_callbacks=False, simulation=False, use_vesc=False):
@@ -207,7 +211,7 @@ class DriveApiNode(Node):
             pub_function = self.publish
         else:
             self.get_logger().error('Unable to attach a publish function. Shutting down the node.')
-            return
+            raise InitError('Unable to attach a publish function. Shutting down the node.')
 
         # Function is_shutdown() reacts to exit flag (Ctrl+C, etc.)
         # TODO: rewrite
@@ -816,24 +820,31 @@ def main(args=None):
 
     rclpy.init(args=args)
 
+    print(f'main args = {args}')
+
     # TODO: better solution? best practice?
     simulation = 'simulation=true' in args
     use_vesc = 'use_vesc=true' in args
 
-    node = DriveApiNode(
-        simulation=simulation,
-        use_vesc=use_vesc,
-    )
+    node = None
 
     try:
+        node = DriveApiNode(
+            simulation=simulation,
+            use_vesc=use_vesc,
+        )
         rclpy.spin(node)
+    except InitError as e:
+        print(f'InitError: {e}', file=sys.stderr)
+        pass
     except KeyboardInterrupt:
         pass
 
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    node.destroy_node()
+    if node is not None:
+        # Destroy the node explicitly
+        # (optional - otherwise it will be done automatically
+        # when the garbage collector destroys the node object)
+        node.destroy_node()
     rclpy.shutdown()
 
 

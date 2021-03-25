@@ -9,9 +9,18 @@
 
 """
 
+from typing import List
+
 # ROS 2 Python Client API
 import rclpy
 from rclpy.node import Node
+from rcl_interfaces.msg import \
+    ParameterDescriptor, \
+    ParameterType, \
+    Parameter, \
+    SetParametersResult, \
+    FloatingPointRange, \
+    IntegerRange
 
 # Computation engine (less memory consuming than numpy)
 import math
@@ -102,6 +111,182 @@ class RideNode(Node):
         self.FILTER_ALPHA = 0.00
 
         # TODO: declare parameters and supply initial values
+
+        # TODO: What's the real usage?
+        #   Do we need set multiple parameters at once (atomically)?
+        #   see https://answers.ros.org/question/358391/is-it-possible-to-set-multiple-parameters-in-ros2-from-the-command-line-using-ros2-param-set/
+
+        # TODO: Did we use rqt_reconfigure (https://github.com/ros-visualization/rqt_reconfigure)?
+        #   If we did, we might need to investigate rqt_reconfigure ROS 2 port state
+        #   (it was ported to ROS 2 Dashing, see https://github.com/ros-visualization/rqt_reconfigure/issues)
+
+        self.add_on_set_parameters_callback(self.reconfigure_callback)
+
+        self.declare_parameter(
+            name='speed_max',
+            value=0.158483034,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-1 speed',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=0.3,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='speed_min',
+            value=0.138522954,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-2 speed',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=0.3,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='speed_avoid',
+            value=0.098602794,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-3 speed',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=0.3,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='turn_l_min',
+            value=0.677419355,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-1 turn ratio (left)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='turn_l_max',
+            value=1.000000000,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-2 turn ratio (left)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+        self.declare_parameter(
+            name='turn_l_avoid',
+            value=1.419354839,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-3 turn ratio (left)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='turn_r_min',
+            value=0.677419355,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-1 turn ratio (right)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='turn_r_max',
+            value=0.709677419,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-2 turn ratio (right)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='turn_r_avoid',
+            value=1.290322581,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-3 turn ratio (right)',
+                floating_point_range=[FloatingPointRange(
+                    from_value=0.0, to_value=2.0,
+                    step=0.0  # means no discrete step
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='switch_l12',
+            value=20,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-1 to Level-2 angle switch (in degrees)',
+                integer_range=[IntegerRange(
+                    from_value=0, to_value=90,
+                    step=1,
+                )],
+            ),
+        )
+        self.declare_parameter(
+            name='hysteresis_l12',
+            value=5,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-1 to Level-2 angle hysteresis (in degrees)',
+                integer_range=[IntegerRange(
+                    from_value=0, to_value=20,
+                    step=1,
+                )],
+            ),
+        )
+
+        self.declare_parameter(
+            name='switch_l23',
+            value=41,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-2 to Level-3 angle switch (in degrees)',
+                integer_range=[IntegerRange(
+                    from_value=0, to_value=90,
+                    step=1,
+                )],
+            ),
+        )
+        self.declare_parameter(
+            name='hysteresis_l23',
+            value=5,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Level-2 to Level-3 angle hysteresis (in degrees)',
+                integer_range=[IntegerRange(
+                    from_value=0, to_value=20,
+                    step=1,
+                )],
+            ),
+        )
 
         pass
 
@@ -230,72 +415,82 @@ class RideNode(Node):
 
     pass
 
-    def reconf_callback(self, config, level):
-        """Callback for maintaining dynamic reconfigure of this node."""
+    def reconfigure_callback(self, parameters: List[Parameter]) -> SetParametersResult:
+        """Called when any parameter changes
 
-        self.get_logger().info(f'''Reconfigure Request:
-    Speed
-        MAX: {config.Speed_max}
-        MIN: {config.Speed_min}
-        AVOID: {config.Speed_avoid}
-    Turn-L
-        MIN: {config.TurnL_min}
-        MAX: {config.TurnL_max}
-        AVOID: {config.TurnL_avoid}
-    Turn-R
-        MIN: {config.TurnR_min}
-        MAX: {config.TurnR_max}
-        AVOID: {config.TurnR_avoid}
-    Switch 1-2
-        Angle: {config.Switch_L12}
-        Hysteresis: {config.Hysteresis_L12}
-    Switch 2-3
-        Angle: {config.Switch_L23}
-        Hysteresis: {config.Hysteresis_L23}
-''')
+        Registered using self.add_on_set_parameters_callback(self.reconfigure_callback).
 
-        # rospy.loginfo(
-        #     """Reconfigure Request: \n""" +
-        #     """\tSpeed\n"""
-        #     """\t\tMAX: {Speed_max}\n"""
-        #     """\t\tMIN: {Speed_min}\n"""
-        #     """\t\tAVOID: {Speed_avoid}\n"""
-        #     """\tTurn-L\n"""
-        #     """\t\tMIN: {TurnL_min}\n"""
-        #     """\t\tMAX: {TurnL_max}\n"""
-        #     """\t\tAVOID: {TurnL_avoid}\n"""
-        #     """\tTurn-R\n"""
-        #     """\t\tMIN: {TurnR_min}\n"""
-        #     """\t\tMAX: {TurnR_max}\n"""
-        #     """\t\tAVOID: {TurnR_avoid}\n"""
-        #     """\tSwitch 1-2\n"""
-        #     """\t\tAngle: {Switch_L12}\n"""
-        #     """\t\tHysteresis: {Hysteresis_L12}\n"""
-        #     """\tSwitch 2-3\n"""
-        #     """\t\tAngle: {Switch_L23}\n"""
-        #     """\t\tHysteresis: {Hysteresis_L23}"""
-        #     .format(**config)
-        # )
+        """
 
-        self.VP_SPEED_MIN = config["Speed_min"]
-        self.VP_SPEED_MAX = config["Speed_max"]
-        self.VP_SPEED_AVOID = config["Speed_avoid"]
+        print(parameters)
 
-        self.VP_TURN_MAX_L = config["TurnL_max"]
-        self.VP_TURN_MIN_L = config["TurnL_min"]
-        self.VP_TURN_AVOID_L = config["TurnL_avoid"]
+        self.get_logger().info('reconfigure_callback')
 
-        self.VP_TURN_MAX_R = config["TurnR_max"]
-        self.VP_TURN_MIN_R = config["TurnR_min"]
-        self.VP_TURN_AVOID_R = config["TurnR_avoid"]
+        return SetParametersResult(successful=False)
 
-        self.ANGLE_SWITCH = math.pi * (config["Switch_L12"] / 180.0)
-        self.ANGLE_HYSTER = math.pi * (config["Hysteresis_L12"] / 180.0)
+        #         self.get_logger().info(f'''Reconfigure Request:
+        #     Speed
+        #         MAX: {config.Speed_max}
+        #         MIN: {config.Speed_min}
+        #         AVOID: {config.Speed_avoid}
+        #     Turn-L
+        #         MIN: {config.TurnL_min}
+        #         MAX: {config.TurnL_max}
+        #         AVOID: {config.TurnL_avoid}
+        #     Turn-R
+        #         MIN: {config.TurnR_min}
+        #         MAX: {config.TurnR_max}
+        #         AVOID: {config.TurnR_avoid}
+        #     Switch 1-2
+        #         Angle: {config.Switch_L12}
+        #         Hysteresis: {config.Hysteresis_L12}
+        #     Switch 2-3
+        #         Angle: {config.Switch_L23}
+        #         Hysteresis: {config.Hysteresis_L23}
+        # ''')
+        #
+        #         # rospy.loginfo(
+        #         #     """Reconfigure Request: \n""" +
+        #         #     """\tSpeed\n"""
+        #         #     """\t\tMAX: {Speed_max}\n"""
+        #         #     """\t\tMIN: {Speed_min}\n"""
+        #         #     """\t\tAVOID: {Speed_avoid}\n"""
+        #         #     """\tTurn-L\n"""
+        #         #     """\t\tMIN: {TurnL_min}\n"""
+        #         #     """\t\tMAX: {TurnL_max}\n"""
+        #         #     """\t\tAVOID: {TurnL_avoid}\n"""
+        #         #     """\tTurn-R\n"""
+        #         #     """\t\tMIN: {TurnR_min}\n"""
+        #         #     """\t\tMAX: {TurnR_max}\n"""
+        #         #     """\t\tAVOID: {TurnR_avoid}\n"""
+        #         #     """\tSwitch 1-2\n"""
+        #         #     """\t\tAngle: {Switch_L12}\n"""
+        #         #     """\t\tHysteresis: {Hysteresis_L12}\n"""
+        #         #     """\tSwitch 2-3\n"""
+        #         #     """\t\tAngle: {Switch_L23}\n"""
+        #         #     """\t\tHysteresis: {Hysteresis_L23}"""
+        #         #     .format(**config)
+        #         # )
+        #
+        #         self.VP_SPEED_MIN = config["Speed_min"]
+        #         self.VP_SPEED_MAX = config["Speed_max"]
+        #         self.VP_SPEED_AVOID = config["Speed_avoid"]
+        #
+        #         self.VP_TURN_MAX_L = config["TurnL_max"]
+        #         self.VP_TURN_MIN_L = config["TurnL_min"]
+        #         self.VP_TURN_AVOID_L = config["TurnL_avoid"]
+        #
+        #         self.VP_TURN_MAX_R = config["TurnR_max"]
+        #         self.VP_TURN_MIN_R = config["TurnR_min"]
+        #         self.VP_TURN_AVOID_R = config["TurnR_avoid"]
+        #
+        #         self.ANGLE_SWITCH = math.pi * (config["Switch_L12"] / 180.0)
+        #         self.ANGLE_HYSTER = math.pi * (config["Hysteresis_L12"] / 180.0)
+        #
+        #         self.ANGLE_SWITCH_A = math.pi * (config["Switch_L23"] / 180.0)
+        #         self.ANGLE_HYSTER_A = math.pi * (config["Hysteresis_L23"] / 180.0)
 
-        self.ANGLE_SWITCH_A = math.pi * (config["Switch_L23"] / 180.0)
-        self.ANGLE_HYSTER_A = math.pi * (config["Hysteresis_L23"] / 180.0)
-
-        return config
+        pass
 
 
 def main(args=None):

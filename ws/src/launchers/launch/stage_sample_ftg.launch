@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!--
+	Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
+	Description: Launches stage simulator with selected configuration (FTG).
+
+	Note: This is supposed to be used as a quick sample for demonstrating Stage simulator.
+
+	Stage -> (Recognition) obstacle_substitution -> (Planner) follow_the_gap_v0 -> Drive-API
+	TODO: port to ROS 2
+-->
+<launch>
+
+	<arg name="world" default="test_track" doc="Name of a world within 'stage_worlds' (storage/stage/world)"/>
+	<arg name="rviz" default="false" doc="Set to true if launching pre-set rViz is required"/>
+	<arg name="map" default="false" doc="Set to true if launching map server is required"/>
+
+	<node
+		pkg="stage_ros"
+		type="stageros"
+		name="stage_simulator"
+		output="screen"
+		args="$(find storage)/stage/world/$(arg world).world"
+	/>
+
+	<!--<rosparam command="load" file="$(find launchers)/../configs/tx2-auto.cfg" />-->
+
+	<!-- Transformation -->
+	<node pkg="tf" type="static_transform_publisher" name="tf_base_laser_link"
+		  args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="tf_odom_map" args="0 0 0 0 0 0 odom map 100"/>
+
+	<include file="$(find obstacle_substitution)/launch/start.launch">
+		<arg name="remap" value="true"/>
+		<arg name="/scan" value="/base_scan"/>
+	</include>
+
+	<include file="$(find follow_the_gap_v0)/launch/start.launch"/>
+
+	<include file="$(find drive_api)/launch/start.launch">
+		<arg name="simulation" value="true"/>
+		<arg name="steer_modifier" value="0.7"/>
+		<arg name="speed_modifier" value="7.26"/>
+	</include>
+
+	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find storage)/rviz/stage_sample.rviz" if="$(arg rviz)"/>
+
+	<!-- TODO: Zobrazit mapu v rvizu, vytvorit ji dynamicky z .world; publikovat transformaci /map<->/odom. -->
+	<node
+		pkg="map_server"
+		type="map_server"
+		name="map_server"
+		args="$(find storage)/stage/world/$(arg world).yaml"
+		if="$(arg map)"
+	/>
+
+</launch>

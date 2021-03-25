@@ -31,3 +31,19 @@
     It is possible use ament_cmake with Python code but I am not sure
     if `colcon build --symlink-install` option works then.
     And also it is unnecessary verbose.  
+
+
+### Launch files are not symlinked
+
+Normally `generate_launch_description` functions should be placed
+in their respective launch files (e.g. `launch/start.launch.py`).
+**BUT** `--symlink-install` option does not work for launch files:
+* see https://github.com/colcon/colcon-core/issues/407
+* see https://github.com/ros2/launch/issues/187
+
+We have several possible **workarounds**:
+1. _(The currently used one, seems to be the best one.)_ Place launch definitions to package dir and include them
+    from respective launch files. This way rebuild is needed only once. 
+    The idea comes from https://github.com/colcon/colcon-core/issues/169#issuecomment-531517276
+2. Another possible workaround is mentioned here (although it seems rather impractical) https://github.com/ros2/launch/issues/187#issuecomment-468667696.
+3. We could create a script to manually symlink them after build (while doing dev). But that would be tiresome and error-prone.

@@ -3,11 +3,19 @@
 
 ## Status
 
+* auxiliary
+    * **rosmeasure** (Python)
+        * currently ported just skeleton
+        * TODO: port code
+* configs
+    * copied 1:1
 * decision_and_control
-    * **follow_the_gap_v0** (C++, launch files)
+    * **follow_the_gap_v0** (C++)
         * C++ node
-    * **follow_the_gap_v0_ride** (Python)
+    * **follow_the_gap_v0_ride** (Python, launch files)
         * extracted from follow_the_gap_v0 package
+* **launchers** (Python, launch files)
+    * WIP
 * messages
     * **command_msgs** (IDL)
     * **f1tenth_race** (IDL)
@@ -15,13 +23,19 @@
     * **plan_msgs** (IDL)
     * **trajectory** (IDL)
     * **vesc_msgs** (IDL)
+* perception
+    * recognition
+        * **obstacle_substitution** (Python, launch files)
+* **storage** (data files)
 * vehicle_platform
     * **drive_api** (Python, launch files)
-    * **drive_api_msgs**
+    * **drive_api_msgs** (IDL)
         * extracted from drive_api package,
           so that drive_api could be pure Python package
     * **teensy** (IDL, launch files)
         * TODO: launch file, rosserial_python
+    * **vesc** (launch files)
+        * TODO: launch file, vesc_driver
 
 
 ## Notes

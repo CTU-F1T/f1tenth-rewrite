@@ -9,8 +9,6 @@
 		See 'README.md' for more information.
 
 		Note: Public version is available at https://github.com/CTU-IIG/f1t-ftg/.
-		Note: This version contains also FTGR (Follow The Gap Ride node), which
-		was removed in the public version.
 		Note: FTG code was sanitized and checked by BUT. It should be completely
 		safe and free of errors. (v. 0.2.0)
 	</description>
@@ -38,10 +36,7 @@
 	<exec_depend>geometry_msgs</exec_depend>
 	<exec_depend>obstacle_msgs</exec_depend>
 
-	<!-- TODO: uncomment once ported -->
-	<!-- <exec_depend>drive_api</exec_depend> -->
-
-	<!-- ORIGINAL dependencies
+	<!-- ORIGINAL dependencies (ROS 1 version)
 
 	// libs
 	<build_depend>roscpp</build_depend>

@@ -15,11 +15,10 @@ setup(
             'share/' + package_name,
             ['package.xml']
         ),
-        # TODO: add launch files here once ported to ROS 2 (probably use glob)
-        # (
-        #     'share/' + package_name,
-        #     ['launch/something.launch.py']
-        # ),
+        (
+            'share/' + package_name,
+            ['launch/stage.launch.py']
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

@@ -1,0 +1,195 @@
+# Testovaci draha
+
+# Sensors (lidar)
+define ust10lx ranger
+(
+    sensor( 			
+        range [ 0.0  10.0 ]
+        fov 270.0
+        samples 3243
+    )
+
+    # generic model properties
+    color "orange"
+)
+
+# Robot
+define car position
+(
+    # velikost
+    size [0.565 0.29 0.14]
+    origin [-0.165 0 0 0]
+    gui_nose 1
+
+    # model (tx2-auto-3)
+    block
+    (
+        points 12
+        point[0] [16.43 7.25]
+        point[1] [16.43 9.71]
+        point[2] [14 12.76]
+        point[3] [14 16.25]
+        point[4] [16.43 19.29]
+        point[5] [16.43 21.75]
+        point[6] [36.63 21.75]
+        point[7] [39.35 17.86]
+        point[8] [45 16.59]
+        point[9] [45 12.41]
+        point[10] [39.35 11.14]
+        point[11] [36.63 7.25]
+        z [1 8.5]
+    )
+
+    # Kola LZ
+    block
+    (
+        points 4
+        point[0] [7.5 0]
+        point[1] [7.5 6]
+        point[2] [18 6]
+        point[3] [18 0]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola PZ
+    block
+    (
+        points 4
+        point[0] [7.5 23]
+        point[1] [7.5 29]
+        point[2] [18 29]
+        point[3] [18 23]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola PP
+    block
+    (
+        points 4
+        point[0] [39.5 23]
+        point[1] [39.5 29]
+        point[2] [50 29]
+        point[3] [50 23]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola LP
+    block
+    (
+        points 4
+        point[0] [39.5 0]
+        point[1] [39.5 6]
+        point[2] [50 6]
+        point[3] [50 0]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Predni naraznik
+    block
+    (
+        points 4
+        point[0] [54.5 4.75]
+        point[1] [54.5 24.25]
+        point[2] [56.5 24.25]
+        point[3] [56.5 4.75]
+        z [9 12]
+        color "black"
+    )
+
+    # Zadni naraznik
+    block
+    (
+        points 4
+        point[0] [0 6]
+        point[1] [0 23]
+        point[2] [0.5 23]
+        point[3] [0.5 6]
+        z [9 12]
+        color "black"
+    )
+
+    # Podstavec lidaru (pod nim)
+    block
+    (
+        points 4
+        point[0] [28.5 12]
+        point[1] [28.5 17]
+        point[2] [33.5 17]
+        point[3] [33.5 12]
+        z [8.5 10.5]
+        color "blue"
+    )
+
+    # Podstavec lidaru (cast lidaru)
+    block
+    (
+        points 4
+        point[0] [28.5 12]
+        point[1] [28.5 17]
+        point[2] [33.5 17]
+        point[3] [33.5 12]
+        z [10.5 14]
+        color "black"
+    )
+
+    # typ pohybu
+    drive "car"
+
+    # typ lokalizace
+    localization "gps"
+    # gps = absolutni
+    # odom = relativní
+
+    # LiDAR
+    # pozice v metrech, musi se pripocitat i posun stredu otaceni
+    # a pocatecni poloha
+    ust10lx ( pose [ -0.12 0 0 0 ] size [ 0.05 0.05 0.035 ] )
+)
+
+# Podklad
+define floorplan model
+(
+    # sombre, sensible, artistic
+    color "gray30"
+
+    # most maps will need a bounding box
+    boundary 1
+
+    gui_nose 0
+    gui_grid 0
+
+    gui_outline 0
+    gripper_return 0
+    fiducial_return 0
+    laser_return 1
+)
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.065000
+
+interval_sim 100  # simulation timestep in milliseconds
+
+
+window
+( 
+    size [ 745.000 448.000 ] 
+
+    rotate [ 0.000 -1.560 ]
+    scale 28.806 
+)
+
+# load an environment bitmap
+floorplan
+( 
+    name "ciirc-prizemi-draha"
+    bitmap "ciirc-prizemi-draha.pgm"
+    size [8.0 12.0 0.5]
+    pose [0.7 -4.8 0.000000 00]
+)
+
+# throw in a robot
+car( pose [ 0 0 0 0 ] name "car" color "blue")

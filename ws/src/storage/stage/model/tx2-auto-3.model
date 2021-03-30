@@ -1,0 +1,241 @@
+# tx2-auto-3
+# Stage simulator model of 'tx2-auto-3'
+
+#include "ust10lx.model"
+# Stage simulator model of 'Hokuyo UST-10LX' LiDAR
+
+include "../apriltags/atag0.model"
+include "../apriltags/atag1.model"
+include "../apriltags/atag2.model"
+include "../apriltags/atag3.model"
+# Stage simulator model of apriltag ID #0, #1, #2, #3
+
+# Sensors (lidar)
+define ust10lx ranger
+(
+    sensor( 			
+        range [ 0.0  10.0 ]
+        fov 270.0
+        samples 3243
+    )
+
+    # generic model properties
+    color "orange"
+)
+
+# Sensors (camera)
+define simcam camera
+(
+    resolution [ 640 480 ]
+    range [ 0.2 40.0 ]
+    fov [ 69.0 42.0 ]
+    pantilt [ 0.0 0.0 ]
+
+    color "grey"
+)
+
+define atag0_cube model (
+    size [ 0 0 0 ]
+    origin [ 0 0 0 0 ]
+    atag0 ( pose [ 0 -0.05 0 0 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0.05 0 0 90 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0 0.05 0 180 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ -0.05 0 0 270 ] size [ 0.10 0.01 0.10 ] )
+)
+
+define atag0_octa model (
+    size [ 0 0 0 ]
+    origin [ 0 0 0 0 ]
+    atag0 ( pose [ 0 -0.120710678 0 0 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0.085355339 -0.085355339 0 45 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0.120710678 0 0 90 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0.085355339 0.085355339 0 135 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ 0 0.120710678 0 180 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ -0.085355339 0.085355339 0 225 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ -0.120710678 0 0 270 ] size [ 0.10 0.01 0.10 ] )
+    atag0 ( pose [ -0.085355339 -0.085355339 0 315 ] size [ 0.10 0.01 0.10 ] )
+)
+
+define atag_cube model (
+    size [ 0 0 0 ]
+    origin [ 0 0 0 0 ]
+    atag3 ( pose [ 0 -0.06 0 0 ] size [ 0.12 0.01 0.12 ] )
+    atag0 ( pose [ 0.06 0 0 90 ] size [ 0.12 0.01 0.12 ] )
+    atag1 ( pose [ 0 0.06 0 180 ] size [ 0.12 0.01 0.12 ] )
+    atag2 ( pose [ -0.06 0 0 270 ] size [ 0.12 0.01 0.12 ] )
+)
+
+define car position
+(
+    # velikost
+    size [0.565 0.29 0.175]
+    origin [-0.165 0 0 0]
+    gui_nose 1
+
+    # model (tx2-auto-3)
+    block
+    (
+        points 12
+        point[0] [16.43 7.25]
+        point[1] [16.43 9.71]
+        point[2] [14 12.76]
+        point[3] [14 16.25]
+        point[4] [16.43 19.29]
+        point[5] [16.43 21.75]
+        point[6] [36.63 21.75]
+        point[7] [39.35 17.86]
+        point[8] [45 16.59]
+        point[9] [45 12.41]
+        point[10] [39.35 11.14]
+        point[11] [36.63 7.25]
+        z [1 8.5]
+    )
+
+    # Kola LZ
+    block
+    (
+        points 4
+        point[0] [7.5 0]
+        point[1] [7.5 6]
+        point[2] [18 6]
+        point[3] [18 0]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola PZ
+    block
+    (
+        points 4
+        point[0] [7.5 23]
+        point[1] [7.5 29]
+        point[2] [18 29]
+        point[3] [18 23]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola PP
+    block
+    (
+        points 4
+        point[0] [39.5 23]
+        point[1] [39.5 29]
+        point[2] [50 29]
+        point[3] [50 23]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Kola LP
+    block
+    (
+        points 4
+        point[0] [39.5 0]
+        point[1] [39.5 6]
+        point[2] [50 6]
+        point[3] [50 0]
+        z [0 10.5]
+        color "black"
+    )
+
+    # Predni naraznik
+    block
+    (
+        points 4
+        point[0] [54.5 4.75]
+        point[1] [54.5 24.25]
+        point[2] [56.5 24.25]
+        point[3] [56.5 4.75]
+        z [9 12]
+        color "black"
+    )
+
+    # Zadni naraznik
+    block
+    (
+        points 4
+        point[0] [0 6]
+        point[1] [0 23]
+        point[2] [0.5 23]
+        point[3] [0.5 6]
+        z [9 12]
+        color "black"
+    )
+
+    # Podstavec lidaru (pod nim)
+    block
+    (
+        points 4
+        point[0] [28.5 12]
+        point[1] [28.5 17]
+        point[2] [33.5 17]
+        point[3] [33.5 12]
+        z [8.5 10.5]
+        color "blue"
+    )
+
+    # Podstavec lidaru (cast lidaru)
+    block
+    (
+        points 4
+        point[0] [28.5 12]
+        point[1] [28.5 17]
+        point[2] [33.5 17]
+        point[3] [33.5 12]
+        z [10.5 14]
+        color "black"
+    )
+
+    # lidar
+    block
+    (
+        points 4
+        point[0] [28.5 12]
+        point[1] [28.5 17]
+        point[2] [33.5 17]
+        point[3] [33.5 12]
+        z [14 17.5]
+        color "orange"
+    )
+
+    # atag_cube
+    #block
+    #(
+    #    points 4
+    #    point[0] [10.5 8.5]
+    #    point[1] [10.5 20.5]
+    #    point[2] [22.5 20.5]
+    #    point[3] [22.5 8.5]
+    #    z [15 27]
+    #    color "green"
+    #)
+
+    # typ pohybu
+    drive "car"
+
+    # typ lokalizace
+    localization "gps"
+    # gps = absolutni
+    # odom = relativní
+
+    # vzdalenost kol
+    wheelbase 0.32
+
+    # LiDAR
+    # pozice v metrech, musi se pripocitat i posun stredu otaceni
+    # a pocatecni poloha
+    ust10lx ( pose [ -0.12 0 0.1575 0 ] size [ 0.05 0.05 0.035 ] )
+
+    # Camera
+    simcam ( pose [ -0.1375 0 0.175 0 ] size [ 0.025 0.09 0.025 ] )
+
+    # Apriltags (octa)
+    #atag0_octa( pose [ -0.32 0 0 0 ] )
+    #atag0_cube( pose [ -0.26 0 0 0 ] )
+    # Vztahuje se ke stredu tohoto objektu, a Z zacina na maximu Z z blokoveho popisu!
+    #atag_cube( pose [ -0.285 0 -0.025 0 ] )
+
+    stack_children 0
+
+)

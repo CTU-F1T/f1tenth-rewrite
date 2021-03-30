@@ -1,0 +1,71 @@
+# Testovaci draha
+
+include "../model/tx2-auto-3.model"
+
+# Podklad
+define floorplan model
+(
+    # sombre, sensible, artistic
+    color "gray30"
+)
+
+# load an environment bitmap
+floorplan
+( 
+    name "intersection_complex"
+    bitmap "../map/intersection_complex.pgm"
+    size [40.0 40.0 0.5]
+    pose [0 0 0 0]
+)
+
+define znacka0 model
+(
+    color "red"
+    name "STOP"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00000.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka0( pose [ -4.5 6.15 0 0 ] )
+znacka0( pose [ 6.15 -4.5 0 0 ] )
+
+define znacka1 model
+(
+    #color "yellow"
+    color "black"
+
+    name "MAIN"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00001.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka1( pose [ -6.15 4.5 0 0 ] )
+znacka1( pose [ 4.5 -6.15 0 0 ] )
+
+define znacka2 model
+(
+    color "blue"
+
+    name "NONE"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00002.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka2( pose [ -8 -6.15 0 0 ] )
+znacka2( pose [ 6.15 8 0 0 ] )
+
+# throw in a robot
+car( pose [ 0 6 0 180 ] name "car" color "blue")
+car( pose [ -6 0 0 90 ] name "car2" color "green")

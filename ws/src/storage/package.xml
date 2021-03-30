@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+
+	<name>storage</name>
+	<version>0.0.1</version>
+	<description>
+		Package which holds various files to be easily reached from launch
+		files.
+	</description>
+	<maintainer email="klapajar@fel.cvut.cz">Jaroslav Klapálek</maintainer>
+	<license>Apache License 2.0</license>
+	<author email="klapajar@fel.cvut.cz">Jaroslav Klapálek</author>
+
+	<buildtool_depend>ament_cmake</buildtool_depend>
+
+	<export>
+		<build_type>ament_cmake</build_type>
+	</export>
+
+</package>

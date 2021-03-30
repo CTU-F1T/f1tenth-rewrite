@@ -1,0 +1,163 @@
+# Testovaci draha
+
+include "../model/tx2-auto-3.model"
+
+# Podklad
+define floorplan model
+(
+    # sombre, sensible, artistic
+    color "gray30"
+)
+
+# load an environment bitmap
+floorplan
+( 
+    name "circuit_playground"
+    bitmap "../map/circuit_playground.pgm"
+    size [37.333333 37.333333 0.5]
+    pose [0 0 0 0]
+)
+
+define znacka0 model
+(
+    color "red"
+    name "STOP / AprilTag#0"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00000.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka0( pose [ -11.5 -0.5 0 0 ] )
+znacka0( pose [ -11.5 -1.5 0 0 ] )
+znacka0( pose [ -11.5 -2.5 0 0 ] )
+znacka0( pose [ -11.5 -3.5 0 0 ] )
+
+define znacka1 model
+(
+    #color "yellow"
+    color "black"
+
+    name "MAIN / AprilTag#1"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00001.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka1( pose [ -10.5 -0.5 0 0 ] )
+znacka1( pose [ -10.5 -1.5 0 0 ] )
+znacka1( pose [ -10.5 -2.5 0 0 ] )
+znacka1( pose [ -10.5 -3.5 0 0 ] )
+
+define znacka2 model
+(
+    color "blue"
+
+    name "NONE / AprilTag#2"
+
+    obstacle_return 0
+    ranger_return 0
+
+    bitmap "../../apriltags/tag36_11_00002.png"
+    size [0.3 0.3 0.0001]
+)
+
+znacka2( pose [ -9.5 -0.5 0 0 ] )
+znacka2( pose [ -9.5 -1.5 0 0 ] )
+znacka2( pose [ -9.5 -2.5 0 0 ] )
+znacka2( pose [ -9.5 -3.5 0 0 ] )
+
+define cube model
+(
+    color "yellow"
+
+    name "Cube / Obstacle"
+
+    obstacle_return 1
+    ranger_return 1
+
+    block
+    (
+        points 4
+
+        point[0] [0 0]
+        point[1] [1 0]
+        point[2] [1 1]
+        point[3] [0 1]
+
+        z [0 1]
+    )
+
+    size [0.5 0.5 0.5]
+)
+
+cube( pose [ -8.5 -0.5 0 0 ] )
+cube( pose [ -8.5 -1.5 0 0 ] )
+cube( pose [ -8.5 -2.5 0 0 ] )
+cube( pose [ -8.5 -3.5 0 0 ] )
+
+define cube_sm model
+(
+    color "purple"
+
+    name "Cube small / Obstacle"
+
+    obstacle_return 1
+    ranger_return 1
+
+    block
+    (
+        points 4
+
+        point[0] [0 0]
+        point[1] [1 0]
+        point[2] [1 1]
+        point[3] [0 1]
+
+        z [0 1]
+    )
+
+    size [0.25 0.25 0.25]
+)
+
+cube_sm( pose [ -7.5 -0.5 0 0 ] )
+cube_sm( pose [ -7.5 -1.5 0 0 ] )
+cube_sm( pose [ -7.5 -2.5 0 0 ] )
+cube_sm( pose [ -7.5 -3.5 0 0 ] )
+
+define cube_la model
+(
+    color "green"
+
+    name "Cube large / Obstacle"
+
+    obstacle_return 1
+    ranger_return 1
+
+    block
+    (
+        points 4
+
+        point[0] [0 0]
+        point[1] [1 0]
+        point[2] [1 1]
+        point[3] [0 1]
+
+        z [0 1]
+    )
+
+    size [1 1 1]
+)
+
+cube_la( pose [ -6.5 -0.5 0 0 ] )
+cube_la( pose [ -6.5 -1.5 0 0 ] )
+cube_la( pose [ -6.5 -2.5 0 0 ] )
+cube_la( pose [ -6.5 -3.5 0 0 ] )
+
+# throw in a robot
+car( pose [ 0 16.5 0 180 ] name "car" color "blue")

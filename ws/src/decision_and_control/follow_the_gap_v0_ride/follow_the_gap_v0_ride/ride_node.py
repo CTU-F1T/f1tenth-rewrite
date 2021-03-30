@@ -9,7 +9,9 @@
 
 """
 
-from typing import List, Tuple, Any
+import sys
+
+from typing import List, Tuple, Any, Dict, Union, Callable
 
 # ROS 2 Python Client API
 import rclpy
@@ -42,24 +44,74 @@ class RideNode(Node):
     def __init__(self):
         super().__init__('follow_the_gap_ride')
 
-        self.angle_subscription = self.create_subscription(
-            msg_type=Float32,
-            topic='/final_heading_angle',
-            callback=self.angle_callback,
-            qos_profile=1,  # TODO: better QoS settings?
-        )
+        # "global" variables
+        # NOTE: Currently these "global" variables are mapped to ROS 2 node parameters.
+        #       See line 132 below (comment for self.setup_parameters() call) for info.
+        # TODO 1: Get rid of it these variables and use parameters directly.
+        # TODO 2: What's the real usage?
+        #   Do we need set multiple parameters at once (atomically)?
+        #   see https://answers.ros.org/question/358391/is-it-possible-to-set-multiple-parameters-in-ros2-from-the-command-line-using-ros2-param-set/
+        # TODO 3: Did we use rqt_reconfigure (https://github.com/ros-visualization/rqt_reconfigure)?
+        #   If we did, we might need to investigate rqt_reconfigure ROS 2 port state
+        #   (it was ported to ROS 2 Dashing, see https://github.com/ros-visualization/rqt_reconfigure/issues)
+        self.VP_SPEED_MIN: float = math.nan
+        self.VP_SPEED_MAX: float = math.nan
+        self.VP_SPEED_AVOID: float = math.nan
+        self.VP_TURN_MAX_L: float = math.nan
+        self.VP_TURN_MIN_L: float = math.nan
+        self.VP_TURN_AVOID_L: float = math.nan
+        self.VP_TURN_MAX_R: float = math.nan
+        self.VP_TURN_MIN_R: float = math.nan
+        self.VP_TURN_AVOID_R: float = math.nan
+        self.ANGLE_SWITCH: float = math.nan
+        self.ANGLE_HYSTER: float = math.nan
+        self.ANGLE_SWITCH_A: float = math.nan
+        self.ANGLE_HYSTER_A: float = math.nan
+        # param name -> self[name] or self[name] and mapper function
+        self.config_map: Dict[str, Union[str, Tuple[str, Callable[[Any], Any]]]] = {
 
-        self.estop_subscription = self.create_subscription(
-            msg_type=Bool,
-            topic='/eStop',
-            callback=self.estop_callback,
-            qos_profile=1,  # TODO: better QoS settings?
-        )
+            'speed_min': 'VP_SPEED_MIN',
+            'speed_max': 'VP_SPEED_MAX',
+            'speed_avoid': 'VP_SPEED_AVOID',
 
-        # Publishers
+            'turn_l_max': 'VP_TURN_MAX_L',
+            'turn_l_min': 'VP_TURN_MIN_L',
+            'turn_l_avoid': 'VP_TURN_AVOID_L',
+
+            'turn_r_max': 'VP_TURN_MAX_R',
+            'turn_r_min': 'VP_TURN_MIN_R',
+            'turn_r_avoid': 'VP_TURN_AVOID_R',
+
+            'switch_l12': ('ANGLE_SWITCH', math.radians),
+            'hysteresis_l12': ('ANGLE_HYSTER', math.radians),
+
+            'switch_l23': ('ANGLE_SWITCH_A', math.radians),
+            'hysteresis_l23': ('ANGLE_HYSTER_A', math.radians),
+
+        }
+        # setup callback that handles conversion from parameter
+        # to self.VP_*, self.ANGLE_* variables
+        self.add_on_set_parameters_callback(self.reconfigure_callback)
+        # declare parameters and supply default values
+        # (might get automatically rewritten via params file or from CLI arguments)
+        # NOTE: This is synchronous. For each param, self.reconfigure_callback is also synchronously called.
+        #       After this line, all parameters are set and have value.
+        #       Additionally self.VP_*, self.ANGLE_* variables are also initialized
+        #       (thanks to the mapping handled by self.reconfigure_callback)
+        self.setup_parameters()
+        self.assert_all_constants_set()
+
+        # TODO: document mode values meaning and use meaningfully named constants for them
+        self.mode = 0
+        self.current_angle = self.VP_TURN_MAX_L
+        self.current_drive = self.VP_SPEED_MAX
+        # TODO: What is FILTER_ALPHA supposed to do?
+        self.FILTER_ALPHA = 0.00
+
+        # publishers
         self.pwm_pub = self.create_publisher(msg_type=DriveApiValues, topic='/drive_api/command', qos_profile=10)
 
-        # Publishers for car constants (instead of CarControlData.msg)
+        # publishers for car constants (instead of CarControlData.msg)
         self.ltm_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/minF', qos_profile=1)
         self.lta_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/maxF', qos_profile=1)
         self.ltv_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/avoidF', qos_profile=1)
@@ -79,29 +131,21 @@ class RideNode(Node):
 
         self.fal_pub = self.create_publisher(msg_type=Float64, topic='ftg/filter/alpha', qos_profile=1)
 
-        # "global" variables
+        # subscriptions
+        self.angle_subscription = self.create_subscription(
+            msg_type=Float32,
+            topic='/final_heading_angle',
+            callback=self.angle_callback,
+            qos_profile=1,
+        )
+        self.estop_subscription = self.create_subscription(
+            msg_type=Bool,
+            topic='/eStop',
+            callback=self.estop_callback,
+            qos_profile=1,
+        )
 
-        # TODO: declare parameters and supply initial values
-
-        # TODO: What's the real usage?
-        #   Do we need set multiple parameters at once (atomically)?
-        #   see https://answers.ros.org/question/358391/is-it-possible-to-set-multiple-parameters-in-ros2-from-the-command-line-using-ros2-param-set/
-
-        # TODO: Did we use rqt_reconfigure (https://github.com/ros-visualization/rqt_reconfigure)?
-        #   If we did, we might need to investigate rqt_reconfigure ROS 2 port state
-        #   (it was ported to ROS 2 Dashing, see https://github.com/ros-visualization/rqt_reconfigure/issues)
-
-        self.add_on_set_parameters_callback(self.reconfigure_callback)
-
-        self.setup_parameters()
-
-        # TODO: document mode values meaning and use meaningfully named constants for them
-        self.mode = 0
-        self.current_angle = self.VP_TURN_MAX_L
-        self.current_drive = self.VP_SPEED_MAX
-        # TODO: What is FILTER_ALPHA supposed to do?
-        self.FILTER_ALPHA = 0.00
-
+        # TODO: just for debugging, remove once finished
         self.timer = self.create_timer(2, self.timer_callback)
 
         pass
@@ -181,6 +225,20 @@ class RideNode(Node):
 
         pass
 
+    def assert_all_constants_set(self):
+
+        for param_handler in self.config_map.values():
+            assert (isinstance(param_handler, str) or isinstance(param_handler, tuple))
+            attr_name = param_handler if isinstance(param_handler, str) else param_handler[0]
+            assert isinstance(attr_name, str)
+            assert hasattr(self, attr_name)
+            attr_value = getattr(self, attr_name)
+            assert (isinstance(attr_value, float) and not math.isnan(attr_value))
+            pass
+
+        pass
+
+    # TODO: just for debugging, remove once finished
     def timer_callback(self):
 
         hysteresis_l12_value = self.get_parameter('hysteresis_l12').value
@@ -328,11 +386,32 @@ class RideNode(Node):
 
         """
 
-        self.get_logger().info('reconfigure_callback')
+        # self.get_logger().info('reconfigure_callback')
 
-        ok = True
+        for param in parameters:
+            if param.name not in self.config_map:
+                return SetParametersResult(
+                    successful=False,
+                    reason=f'param \'{param.name}\' not in config_map'
+                )
 
-        # self.ANGLE_HYSTER = math.pi * (config["Hysteresis_L12"] / 180.0)
+            param_handler: Union[str, Tuple[str, Callable[[Any], Any]]] = self.config_map[param.name]
+
+            if isinstance(param_handler, str):
+                setattr(self, param_handler, param.value)
+                continue
+
+            if isinstance(param_handler, tuple):
+                attr_name, attr_mapper = param_handler
+                setattr(self, attr_name, attr_mapper(param.value))
+                continue
+
+            return SetParametersResult(
+                successful=False,
+                reason=f'param_handler for param \'{param.name}\' is not valid'
+            )
+
+            pass
 
         # if we pass successful=False, parameter value will not be set
         # if parameter set was attempted using self.set_parameter*, node will exit with an error
@@ -384,37 +463,34 @@ class RideNode(Node):
         #     .format(**config)
         # )
 
-        self.VP_SPEED_MIN = config["Speed_min"]
-        self.VP_SPEED_MAX = config["Speed_max"]
-        self.VP_SPEED_AVOID = config["Speed_avoid"]
-
-        self.VP_TURN_MAX_L = config["TurnL_max"]
-        self.VP_TURN_MIN_L = config["TurnL_min"]
-        self.VP_TURN_AVOID_L = config["TurnL_avoid"]
-
-        self.VP_TURN_MAX_R = config["TurnR_max"]
-        self.VP_TURN_MIN_R = config["TurnR_min"]
-        self.VP_TURN_AVOID_R = config["TurnR_avoid"]
-
-        self.ANGLE_SWITCH = math.pi * (config["Switch_L12"] / 180.0)
-        self.ANGLE_HYSTER = math.pi * (config["Hysteresis_L12"] / 180.0)
-
-        self.ANGLE_SWITCH_A = math.pi * (config["Switch_L23"] / 180.0)
-        self.ANGLE_HYSTER_A = math.pi * (config["Hysteresis_L23"] / 180.0)
+        pass
 
     pass
 
 
-pass
-
-
+# NOTE: See more info the the `main()` in the project README.md (the top-level one)
+#       (section [Python entrypoints `main()` inconsistencies])
 def main(args=None):
+    if args is None:
+        args = sys.argv
+
     rclpy.init(args=args)
 
-    ride_node = RideNode()
+    # print(f'main args = {args}')
 
-    rclpy.spin(ride_node)
+    node = None
 
+    try:
+        node = RideNode()
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+
+    if node is not None:
+        # Destroy the node explicitly
+        # (optional - otherwise it will be done automatically
+        #  when the garbage collector destroys the node object)
+        node.destroy_node()
     rclpy.shutdown()
 
 

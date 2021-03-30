@@ -71,7 +71,6 @@ def generate_start_launch_description():
         launch_ros.actions.Node(
             package='drive_api',
             executable='drive_api_node',
-            # TODO: What does output do? Link to docs?
             output='screen',
             name=[launch.substitutions.LaunchConfiguration('node_name')],
             arguments=[

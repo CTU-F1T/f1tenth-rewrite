@@ -45,10 +45,10 @@ ament_target_dependencies(follow_the_gap
 )
 
 # install launch files
-install(
-  DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
-)
+# install(
+#   DIRECTORY launch
+#   DESTINATION share/${PROJECT_NAME}
+# )
 
 # install nodes
 install(

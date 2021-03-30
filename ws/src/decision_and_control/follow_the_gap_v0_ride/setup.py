@@ -15,6 +15,10 @@ setup(
             'share/' + package_name,
             ['package.xml']
         ),
+        (
+            'share/' + package_name,
+            ['launch/start.launch.py']
+        ),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -25,7 +29,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ride = follow_the_gap_v0_ride.ride_node:main',
+            'ride_node = follow_the_gap_v0_ride.ride_node:main',
         ],
     },
 )

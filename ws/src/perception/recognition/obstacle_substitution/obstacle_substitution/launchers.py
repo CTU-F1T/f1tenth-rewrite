@@ -20,46 +20,18 @@ def generate_start_launch_description():
             default_value='false',
             description='When true, run the node as anonymous (generate random name).',
         ),
-        launch.actions.DeclareLaunchArgument(
-            'simulation',
-            default_value='false',
-            description=(
-                'When true, run the node in simulation mode. '
-                'If anonymous=true then it the simulation=true is forced no matter what.'
-            ),
-        ),
-        launch.actions.DeclareLaunchArgument(
-            'use_vesc',
-            default_value='false',
-            # TODO: Maybe change "rather than" to "instead of"?
-            description='When true speed is published directly to VESC rather than to Teensy.',
-        ),
-        launch.actions.DeclareLaunchArgument(
-            'rate',
-            default_value='10',
-            description='Publish rate of the Drive-API messages.',
-        ),
 
         launch.actions.SetLaunchConfiguration(
             'node_name',
-            value=launch.substitutions.AnonName(name='drive_api'),
+            value=launch.substitutions.AnonName(name='recognition_obstacle_sub'),
             condition=launch.conditions.IfCondition(
                 launch.substitutions.LaunchConfiguration('anonymous')
             ),
         ),
         launch.actions.SetLaunchConfiguration(
             'node_name',
-            value='drive_api',
+            value='recognition_obstacle_sub',
             condition=launch.conditions.UnlessCondition(
-                launch.substitutions.LaunchConfiguration('anonymous')
-            ),
-        ),
-
-        # forces simulation=true when anonymous=true
-        launch.actions.SetLaunchConfiguration(
-            'simulation',
-            value='true',
-            condition=launch.conditions.IfCondition(
                 launch.substitutions.LaunchConfiguration('anonymous')
             ),
         ),
@@ -69,24 +41,10 @@ def generate_start_launch_description():
         ),
 
         launch_ros.actions.Node(
-            package='drive_api',
-            executable='drive_api_node',
-            # TODO: What does output do? Link to docs?
+            package='obstacle_substitution',
+            executable='obstacle_substitution_node',
             output='screen',
             name=[launch.substitutions.LaunchConfiguration('node_name')],
-            arguments=[
-                [
-                    'simulation=',
-                    launch.substitutions.LaunchConfiguration('simulation')
-                ],
-                [
-                    'use_vesc=',
-                    launch.substitutions.LaunchConfiguration('use_vesc')
-                ],
-            ],
-            parameters=[
-                {'rate': launch.substitutions.LaunchConfiguration('rate')},
-            ],
         ),
 
     ])

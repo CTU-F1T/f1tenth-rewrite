@@ -29,7 +29,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'substitute = obstacle_substitution.substitute:main',
+            'obstacle_substitution_node = obstacle_substitution.obstacle_substitution_node:main',
         ],
     },
 )

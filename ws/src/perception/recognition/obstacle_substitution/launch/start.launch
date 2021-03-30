@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 <!--
+	NOTE: THIS IS NOT USED IN ROS 2
+	      SEE start.launch.py
+	      THIS FILE IS LEFT FOR REFERENCE ONLY
+	      (MAY BE REMOVED ONCE PORTING IS FINISHED)
 	Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
 	Description: Launch a node for obstacle substitution.
-	TODO: port to ROS 2
 -->
 <launch>
 	<arg name="/scan" default="/scan" doc="Topic for remapping the '/scan'."/>

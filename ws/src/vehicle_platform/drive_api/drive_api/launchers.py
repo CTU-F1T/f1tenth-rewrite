@@ -16,6 +16,32 @@ def generate_start_launch_description():
     return launch.LaunchDescription([
 
         launch.actions.DeclareLaunchArgument(
+            name='/drive_api/command',
+            default_value='/drive_api/command',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='/drive_pwm',
+            default_value='/drive_pwm',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='/cmd_vel',
+            default_value='/cmd_vel',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            name='/eStop',
+            default_value='/eStop',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            'remap',
+            default_value='false',
+            description='When true, use arguments above for remapping.',
+        ),
+
+        launch.actions.DeclareLaunchArgument(
             'anonymous',
             default_value='false',
             description='When true, run the node as anonymous (generate random name).',
@@ -38,6 +64,22 @@ def generate_start_launch_description():
             'rate',
             default_value='10',
             description='Publish rate of the Drive-API messages.',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            'speed_modifier',
+            default_value='1.0',
+            description='Speed modifier for simulation mode ONLY.',
+            condition=launch.conditions.IfCondition(
+                launch.substitutions.LaunchConfiguration('simulation')
+            ),
+        ),
+        launch.actions.DeclareLaunchArgument(
+            'steer_modifier',
+            default_value='1.0',
+            description='Steering modifier for simulation mode ONLY.',
+            condition=launch.conditions.IfCondition(
+                launch.substitutions.LaunchConfiguration('simulation')
+            ),
         ),
 
         launch.actions.SetLaunchConfiguration(
@@ -85,6 +127,16 @@ def generate_start_launch_description():
             ],
             parameters=[
                 {'rate': launch.substitutions.LaunchConfiguration('rate')},
+                # TODO: pass speed_modifier and steer_modifier iff simulation=true
+                {'speed_modifier': launch.substitutions.LaunchConfiguration('speed_modifier')},
+                {'steer_modifier': launch.substitutions.LaunchConfiguration('steer_modifier')},
+            ],
+            remappings=[
+                # TODO: only if remap=true
+                ('/drive_api/command', launch.substitutions.LaunchConfiguration('/drive_api/command')),
+                ('/drive_pwm', launch.substitutions.LaunchConfiguration('/drive_pwm')),
+                ('/cmd_vel', launch.substitutions.LaunchConfiguration('/cmd_vel')),
+                ('/eStop', launch.substitutions.LaunchConfiguration('/eStop')),
             ],
         ),
 

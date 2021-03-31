@@ -109,6 +109,7 @@ def generate_stage_sample_ftg_launch_description():
                 ('simulation', 'true'),
                 ('steer_modifier', '0.7'),
                 ('speed_modifier', '7.26'),
+                ('/cmd_vel', '/stage_ros2/car/cmd_vel'),
             ],
         ),
 

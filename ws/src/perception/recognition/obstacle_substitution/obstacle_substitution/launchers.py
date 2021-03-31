@@ -16,6 +16,22 @@ def generate_start_launch_description():
     return launch.LaunchDescription([
 
         launch.actions.DeclareLaunchArgument(
+            '/scan',
+            default_value='/scan',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            '/obstacles',
+            default_value='/obstacles',
+            description='Topic remapping',
+        ),
+        launch.actions.DeclareLaunchArgument(
+            'remap',
+            default_value='false',
+            description='When true, use arguments above for remapping.',
+        ),
+
+        launch.actions.DeclareLaunchArgument(
             'anonymous',
             default_value='false',
             description='When true, run the node as anonymous (generate random name).',
@@ -45,6 +61,11 @@ def generate_start_launch_description():
             executable='obstacle_substitution_node',
             output='screen',
             name=[launch.substitutions.LaunchConfiguration('node_name')],
+            remappings=[
+                # TODO: only if remap=true
+                ('/scan', launch.substitutions.LaunchConfiguration('/scan')),
+                ('/obstacles', launch.substitutions.LaunchConfiguration('/obstacles')),
+            ]
         ),
 
     ])

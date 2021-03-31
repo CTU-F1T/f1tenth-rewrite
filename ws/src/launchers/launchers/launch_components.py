@@ -7,6 +7,7 @@ type. It is mandatory to have configuration file loaded to the ROS Parameter
 Server.
 
 This script is just quick extension of 'sensor_launcher'.
+TODO: port to ROS 2
 """
 ######################
 # Imports & Globals

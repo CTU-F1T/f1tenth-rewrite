@@ -1,12 +1,16 @@
 <?xml version="1.0"?>
 <!--
+	NOTE: THIS IS NOT USED IN ROS 2
+	      SEE stage_sample_ftg.launch.py
+	      THIS FILE IS LEFT FOR REFERENCE ONLY
+	      (MAY BE REMOVED ONCE PORTING IS FINISHED)
 	Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
 	Description: Launches stage simulator with selected configuration (FTG).
 
 	Note: This is supposed to be used as a quick sample for demonstrating Stage simulator.
 
 	Stage -> (Recognition) obstacle_substitution -> (Planner) follow_the_gap_v0 -> Drive-API
-	TODO: port to ROS 2
+	TODO: port rviz and map parts to ROS 2
 -->
 <launch>
 

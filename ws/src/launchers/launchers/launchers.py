@@ -67,10 +67,19 @@ def generate_stage_sample_ftg_launch_description():
             ],
         ),
 
+        # TODO: Is it needed with stage_ros2?
         # <!-- Transformation -->
-        # 	<node pkg="tf" type="static_transform_publisher" name="tf_base_laser_link"
-        # 		  args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"/>
-        # 	<node pkg="tf" type="static_transform_publisher" name="tf_odom_map" args="0 0 0 0 0 0 odom map 100"/>
+        # <node
+        # 	pkg="tf" type="static_transform_publisher"
+        # 	name="tf_base_laser_link"
+        # 	args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"
+        # />
+        # <node
+        # 	pkg="tf"
+        # 	type="static_transform_publisher"
+        # 	name="tf_odom_map"
+        # 	args="0 0 0 0 0 0 odom map 100"
+        # />
 
         # obstacle_substitution
         launch.actions.IncludeLaunchDescription(

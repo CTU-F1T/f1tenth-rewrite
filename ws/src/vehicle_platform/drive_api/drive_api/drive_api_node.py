@@ -133,6 +133,7 @@ class DriveApiNode(Node):
         self.msg_vesc = Float64()
         self.msg_cmd_vel = Twist()
         self.lock = threading.Lock()
+        # TODO: replace constants with parameters
         self.constants = {}
         self.eStop = True
         self.run_mode = None
@@ -168,10 +169,24 @@ class DriveApiNode(Node):
 
         # TODO: load from params
         # Action modifiers for simulation (can be received only after 'init_node' as they are private).
-        # self.constants['SIM_SPEEDUP'] = rospy.get_param('~speed_modifier') * 1.0 if rospy.has_param(
-        #     '~speed_modifier') else 1.0
-        # self.constants['SIM_STEERUP'] = rospy.get_param('~steer_modifier') * 1.0 if rospy.has_param(
-        #     '~steer_modifier') else 1.0
+        self.declare_parameter(
+            name='speed_modifier',
+            value=1.0,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Speed modifier for simulation mode ONLY.',
+            ),
+        )
+        self.declare_parameter(
+            name='steer_modifier',
+            value=1.0,
+            descriptor=ParameterDescriptor(
+                type=ParameterType.PARAMETER_DOUBLE,
+                description='Steering modifier for simulation mode ONLY.',
+            ),
+        )
+        self.constants['SIM_SPEEDUP'] = self.get_parameter('speed_modifier').value
+        self.constants['SIM_STEERUP'] = self.get_parameter('steer_modifier').value
 
         # TODO: https://answers.ros.org/question/358343/rate-and-sleep-function-in-rclpy-library-for-ros2/
         # TODO: https://nicolovaligi.com/concurrency-and-parallelism-in-ros1-and-ros2-application-apis.html
@@ -187,17 +202,17 @@ class DriveApiNode(Node):
         #     rate = rospy.Rate(10)
         #     self.get_logger().info('Publishing the messages with default rate 10 Hz.')
         # TODO: configurable rate (via param)
-        self.pub_rate = self.create_rate(frequency=10)
+        # self.pub_rate = self.create_rate(frequency=10)
 
         # Create VESC publisher
         if use_vesc:
             self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)
 
         # Propagate run mode
-        run_mode = RunMode.BASIC_VESC if use_vesc else (RunMode.BASIC if not simulation else RunMode.SIMULATION)
+        self.run_mode = RunMode.BASIC_VESC if use_vesc else (RunMode.BASIC if not simulation else RunMode.SIMULATION)
 
         # Create SIMULATION publisher
-        if run_mode == RunMode.SIMULATION:
+        if self.run_mode == RunMode.SIMULATION:
             self.pub_cmd_vel = self.create_publisher(msg_type=Twist, topic='cmd_vel', qos_profile=1)
         else:
             self.pub = self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
@@ -213,11 +228,19 @@ class DriveApiNode(Node):
             self.get_logger().error('Unable to attach a publish function. Shutting down the node.')
             raise InitError('Unable to attach a publish function. Shutting down the node.')
 
+        # TODO: remove this horrible thing, use self.pub_rate (see commented code line 205)
+        self.timer = self.create_timer(1.0 / 10, pub_function)
+
         # Function is_shutdown() reacts to exit flag (Ctrl+C, etc.)
         # TODO: rewrite
-        while rclpy.ok():
-            pub_function()
-            self.pub_rate.sleep()
+        # while rclpy.ok():
+        #     self.get_logger().info('calling pub_function()')
+        #     pub_function()
+        #     self.pub_rate.sleep()
+
+        self.get_logger().info(f'run_mode={self.run_mode}')
+
+        self.get_logger().info('constructor exit')
 
         pass
 
@@ -458,6 +481,8 @@ class DriveApiNode(Node):
     def stop(self):
         """Send a calm state speed. It means that the car stops."""
 
+        self.get_logger().info(f'stop')
+
         # Check the self.constants dict
         if not self.constants:
             return False
@@ -466,8 +491,8 @@ class DriveApiNode(Node):
             if 'CALM_SPEED' in self.constants:
                 self.msg.pwm_drive = self.constants['CALM_SPEED']
 
-            self.msg_cmd_vel.linear.x = 0
-            self.msg_vesc.data = 0
+            self.msg_cmd_vel.linear.x = 0.0
+            self.msg_vesc.data = 0.0
 
         return True
 
@@ -672,6 +697,8 @@ class DriveApiNode(Node):
     def reset_steer(self):
         """Send a calm state steer. It means that the car turns the wheels to go straight."""
 
+        self.get_logger().info(f'reset_steer')
+
         # Check the self.constants dict
         if not self.constants:
             return False
@@ -680,7 +707,7 @@ class DriveApiNode(Node):
             if 'CALM_STEER' in self.constants:
                 self.msg.pwm_angle = self.constants['CALM_STEER']
 
-            self.msg_cmd_vel.angular.z = 0
+            self.msg_cmd_vel.angular.z = 0.0
         pass
 
     def api_callback(self, data: DriveApiValues):
@@ -784,7 +811,7 @@ class DriveApiNode(Node):
 
         pass
 
-    def estop_callback(self, data):
+    def estop_callback(self, data: Bool):
         """Obtain emergency stop message from ROS topic.
 
         This message can be also used to stop/start simulation.
@@ -794,6 +821,8 @@ class DriveApiNode(Node):
         """
 
         self.eStop = data.data
+
+        self.get_logger().info(f'received eStop == {self.eStop}')
 
         if self.eStop:
             # Set calm states
@@ -824,6 +853,7 @@ def main(args=None):
 
     try:
         node = DriveApiNode(
+            create_callbacks=True,
             simulation=simulation,
             use_vesc=use_vesc,
         )

@@ -243,7 +243,7 @@ class RideNode(Node):
 
         hysteresis_l12_value = self.get_parameter('hysteresis_l12').value
 
-        self.get_logger().info(f'hysteresis_l12 = {hysteresis_l12_value}')
+        # self.get_logger().info(f'hysteresis_l12 = {hysteresis_l12_value}')
 
         # my_new_param = rclpy.parameter.Parameter(
         #     'my_parameter',
@@ -322,6 +322,8 @@ class RideNode(Node):
         Arguments:
         status -- message triggering the autonomous mode, std_msgs.msg/Bool
         """
+
+        self.get_logger().info(f'received eStop == {status.data}')
 
         # eStop == false --> that signals start
         if status.data is False:

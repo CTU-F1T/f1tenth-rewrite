@@ -2,9 +2,8 @@
 #       see the project README.md (the top-level one)
 #       for more info (section [Launch files are not symlinked])
 import launch
-import launch.actions
-import launch.substitutions
-import launch_ros.actions
+import launch.launch_description_sources
+import launch_ros
 
 
 def generate_stage_launch_description():
@@ -33,11 +32,83 @@ def generate_stage_launch_description():
             package='stage_ros2',
             executable='stage_ros2',
             output='screen',
-            name='stage_simulator',
+            # name='stage_simulator',
             parameters=[
                 {
                     'world': launch.substitutions.LaunchConfiguration(variable_name='world'),
                 }
+            ],
+        ),
+
+    ])
+
+
+def generate_stage_sample_ftg_launch_description():
+    return launch.LaunchDescription([
+
+        launch.actions.DeclareLaunchArgument(
+            name='world',
+            default_value='test_track',
+            description='Name of a world within storage/stage/world',
+        ),
+
+        # TODO: rviz
+        # TODO: map
+
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch.substitutions.ThisLaunchFileDir(),
+                    'stage.launch.py'
+                ]),
+            ),
+            launch_arguments=[
+                ('world', launch.substitutions.LaunchConfiguration(variable_name='world')),
+            ],
+        ),
+
+        # <!-- Transformation -->
+        # 	<node pkg="tf" type="static_transform_publisher" name="tf_base_laser_link"
+        # 		  args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"/>
+        # 	<node pkg="tf" type="static_transform_publisher" name="tf_odom_map" args="0 0 0 0 0 0 odom map 100"/>
+
+        # obstacle_substitution
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch_ros.substitutions.FindPackageShare(package='obstacle_substitution'),
+                    'start.launch.py'
+                ]),
+            ),
+            launch_arguments=[
+                ('remap', 'true'),
+                ('/scan', '/stage_ros2/car/ranger_0'),
+            ],
+        ),
+
+        # follow_the_gap_v0_ride
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch_ros.substitutions.FindPackageShare(package='follow_the_gap_v0_ride'),
+                    'start.launch.py'
+                ]),
+            ),
+            launch_arguments=[],
+        ),
+
+        # drive_api
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch_ros.substitutions.FindPackageShare(package='drive_api'),
+                    'start.launch.py'
+                ]),
+            ),
+            launch_arguments=[
+                ('simulation', 'true'),
+                ('steer_modifier', '0.7'),
+                ('speed_modifier', '7.26'),
             ],
         ),
 

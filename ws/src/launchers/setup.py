@@ -17,7 +17,10 @@ setup(
         ),
         (
             'share/' + package_name,
-            ['launch/stage.launch.py']
+            [
+                'launch/stage.launch.py',
+                'launch/stage_sample_ftg.launch.py',
+            ]
         ),
     ],
     install_requires=['setuptools'],

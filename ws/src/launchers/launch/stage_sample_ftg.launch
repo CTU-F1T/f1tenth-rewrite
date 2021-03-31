@@ -25,16 +25,24 @@
 	<!--<rosparam command="load" file="$(find launchers)/../configs/tx2-auto.cfg" />-->
 
 	<!-- Transformation -->
-	<node pkg="tf" type="static_transform_publisher" name="tf_base_laser_link"
-		  args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"/>
-	<node pkg="tf" type="static_transform_publisher" name="tf_odom_map" args="0 0 0 0 0 0 odom map 100"/>
+	<node
+		pkg="tf" type="static_transform_publisher"
+		name="tf_base_laser_link"
+		args="0 0 0 0 0 0 base_laser_link /robot_0/base_laser_link 100"
+	/>
+	<node
+		pkg="tf"
+		type="static_transform_publisher"
+		name="tf_odom_map"
+		args="0 0 0 0 0 0 odom map 100"
+	/>
 
 	<include file="$(find obstacle_substitution)/launch/start.launch">
 		<arg name="remap" value="true"/>
 		<arg name="/scan" value="/base_scan"/>
 	</include>
 
-	<include file="$(find follow_the_gap_v0)/launch/start.launch"/>
+	<include file="$(find follow_the_gap_v0_ride)/launch/start.launch"/>
 
 	<include file="$(find drive_api)/launch/start.launch">
 		<arg name="simulation" value="true"/>

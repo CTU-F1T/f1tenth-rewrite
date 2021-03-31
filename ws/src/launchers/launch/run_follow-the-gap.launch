@@ -12,7 +12,7 @@
 	</include>
 
 	<!-- behaviour -->
-	<include file="$(find follow_the_gap_v0)/launch/start.launch"/>
+	<include file="$(find follow_the_gap_v0_ride)/launch/start.launch"/>
 
 	<!-- vehicle platform -->
 	<include file="$(find teensy)/launch/start.launch"/>

@@ -1,33 +1,48 @@
 # F1/10 @ CTU (ROS 2 rewrite)
 
+An attempt to port **f1tenth** codebase (`git@rtime.felk.cvut.cz:f1tenth`)
+from **ROS 1** Kinetic Kame 🐢 to **ROS 2** Foxy Fitzroy 🦊.
+
+🚧 **NOTE:** This is an early state. WIP. **More docs coming soon**
+(setup, dependencies, installation, running, ...).
+
 
 ## Status
 
-* auxiliary
+_Note 1:_ **Bold names** denotes ROS 2 packages.
+
+_Note 2:_ There are a lot of things in the code
+that need to be explained, clarified, decided, ...
+Look for **TODO** comments.
+
+_ws/src/:_
+* _auxiliary/_
     * **rosmeasure** (Python)
         * currently ported just skeleton
         * TODO: port code
 * configs
     * copied 1:1
-* decision_and_control
+* _decision_and_control/_
     * **follow_the_gap_v0** (C++)
         * C++ node
     * **follow_the_gap_v0_ride** (Python, launch files)
         * extracted from follow_the_gap_v0 package
 * **launchers** (Python, launch files)
     * WIP
-* messages
+    * MVP
+        * `ros2 launch launchers stage_sample_ftg.launch.py`
+* _messages/_
     * **command_msgs** (IDL)
     * **f1tenth_race** (IDL)
     * **obstacle_msgs** (IDL)
     * **plan_msgs** (IDL)
     * **trajectory** (IDL)
     * **vesc_msgs** (IDL)
-* perception
-    * recognition
+* _perception/_
+    * _recognition/_
         * **obstacle_substitution** (Python, launch files)
 * **storage** (data files)
-* vehicle_platform
+* _vehicle_platform/_
     * **drive_api** (Python, launch files)
     * **drive_api_msgs** (IDL)
         * extracted from drive_api package,

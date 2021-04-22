@@ -165,10 +165,10 @@ class RideNode(Node):
             # self.VP_SPEED_MIN = 0.138522954  # ~ 9300
             # self.VP_SPEED_MAX = 0.158483034  # ~ 9350
             # self.VP_SPEED_AVOID = 0.098602794  # ~ 9200
-            # TODO: there was a typo in speed_min / speed_max description (switched Level 1 / Level 2)
-            #   Verify with @klapajar that it was really a typo and not an intention.
-            ('speed_min', 'Level-1 speed', 0.138522954, 0.0, 0.3),
-            ('speed_max', 'Level-2 speed', 0.158483034, 0.0, 0.3),
+            # note: speed_min (Level-2 speed) and speed_max (Level-1 speed)
+            #       descriptions are NOT swapped. The naming has a historical reason.
+            ('speed_min', 'Level-2 speed', 0.138522954, 0.0, 0.3),
+            ('speed_max', 'Level-1 speed', 0.158483034, 0.0, 0.3),
             ('speed_avoid', 'Level-3 speed', 0.098602794, 0.0, 0.3),
 
             # PWM duty for turning

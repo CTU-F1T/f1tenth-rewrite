@@ -23,7 +23,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(obstacle_msgs REQUIRED)
-find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # add follow_the_gap node executable
 add_executable(follow_the_gap
@@ -41,7 +41,7 @@ ament_target_dependencies(follow_the_gap
   visualization_msgs
   geometry_msgs
   obstacle_msgs
-  tf2_ros
+  tf2_geometry_msgs
 )
 
 # install launch files

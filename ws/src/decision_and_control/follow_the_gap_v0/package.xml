@@ -27,8 +27,7 @@
 
 	<depend>rclcpp</depend>
 
-	<!-- TODO: adapt according to the real tf2 usage -->
-	<depend>tf2_ros</depend>
+	<depend>tf2_geometry_msgs</depend>
 
 	<exec_depend>std_msgs</exec_depend>
 	<exec_depend>sensor_msgs</exec_depend>

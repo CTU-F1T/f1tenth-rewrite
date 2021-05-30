@@ -1,17 +1,69 @@
-# F1/10 @ CTU (ROS 2 rewrite)
+# F1/10 @ CTU (ROS 2 port)
 
 An attempt to port **f1tenth** codebase (`git@rtime.felk.cvut.cz:f1tenth`)
 from **ROS 1** Kinetic Kame 🐢 to **ROS 2** Foxy Fitzroy 🦊.
 
-🚧 **NOTE:** This is an early state. WIP. **More docs coming soon**
-(setup, dependencies, installation, running, ...).
+🚧 **NOTE:** The docs will be improved.
+
+
+## Development
+
+Currently, the project uses **ROS 2** [Foxy Fitzroy](https://docs.ros.org/en/foxy/index.html) 🦊.
+
+_Note:_ We are aware that Foxy is no longer the most up-to-date release. But it is a LTS version.
+However, we might upgrade to the [Galactic Geochelone](https://docs.ros.org/en/galactic/index.html) 🌌
+(it was released on May 23rd, 2021).
+
+
+### Installation
+
+Follow the ROS 2 Foxy [Installation guide](https://docs.ros.org/en/foxy/Installation.html) that is appropriate to your platform.
+We tested:
+* Ubuntu 20.04
+* macOS 10.14.6
+
+In order to install the stage Simulator and its binding for ROS 2, refer to
+the [ros2-build](https://github.com/pokusew/ros2-build) repository.
+
+
+### Building
+
+After you built the [ros2-build](https://github.com/pokusew/ros2-build) workspace,
+open a clean terminal. ROS 2 Foxy does not need to be sourced (but it may).
+Then source `../path/to/ros2-build/install/setup.bash`.
+
+Build the f1tenth workspace using:
+```bash
+cd ws
+colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+```
+
+
+### Running
+
+Open a clean terminal. ROS 2 Foxy does not need to be sourced (but it may).
+Source `ws/install/setup.bash` (after you built the project).
+
+Then you can run the Follow the Gap demo in the Stage simulator using the following launch command:
+```bash
+ros2 launch launchers stage_sample_ftg.launch.py
+```
+
+
+### Usage with IDEs
+
+Please refer to the [ros-setup](https://github.com/pokusew/ros-setup) that contains useful information
+about:
+* Using VSCode with ROS (including Remote mode over SSH)
+* Using JetBrains IDEs (CLion, PyCharm) with ROS
+* NVIDIA Jetson TX2 with ROS 2
 
 
 ## Status
 
 _Note 1:_ **Bold names** denotes ROS 2 packages.
 
-_Note 2:_ There are a lot of things in the code
+_Note 2:_ There is _still_ a lot of things in the code
 that need to be explained, clarified, decided, ...
 Look for **TODO** comments.
 

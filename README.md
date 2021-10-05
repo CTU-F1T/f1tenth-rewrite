@@ -93,6 +93,8 @@ _ws/src/:_
 * _perception/_
     * _recognition/_
         * **obstacle_substitution** (Python, launch files)
+    * _sensors/lidar/_
+        * **ust10lx** (Python, launch files with config)
 * **storage** (data files)
 * _vehicle_platform/_
     * **drive_api** (Python, launch files)

@@ -1,0 +1,4 @@
+[<lidar>ust10lx|
+Connect to Hokuyo UST-10LX
+lidar and obtain data.
+]->[<state> /scan|sensor_msgs/LaserScan]

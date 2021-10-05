@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+	NOTE: THIS IS NOT USED IN ROS 2
+	      SEE start.launch.py
+	      THIS FILE IS LEFT FOR REFERENCE ONLY
+	      (MAY BE REMOVED ONCE PORTING IS FINISHED)
+	Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
+	Description: Launch a node which connects to lidar and publishes its data to the
+                 `/scan` topic (sensor_msgs.msg/LaserScan).
+-->
+<launch>
+	<arg name="/scan" default="/scan" doc="Topic for remapping the '/scan'."/>
+	<arg name="remap" default="false" doc="When true use argument above for remapping."/>
+
+	<arg name="use_eth" default="false" doc="Request IP address of LiDAR"/>
+	<arg name="ip_address" doc="IP address of LiDAR" if="$(arg use_eth)"/>
+	<!-- When using Ethernet connection, argument '_ip_address' is mandatory! -->
+
+	<node pkg="urg_node" type="urg_node" name="lidar_ust10lx" output="screen">
+		<remap from="/scan" to="$(arg /scan)" if="$(arg remap)"/>
+		<param name="ip_address" value="$(arg ip_address)" type="str" if="$(arg use_eth)"/>
+	</node>
+</launch>

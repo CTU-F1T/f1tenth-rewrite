@@ -39,9 +39,8 @@ ANGULAR
 """
 
 import sys
-import threading
 
-from typing import List, Tuple, Any
+from typing import List, Tuple, Dict, Any
 
 # ROS 2 Python Client API
 import rclpy
@@ -51,12 +50,13 @@ from rcl_interfaces.msg import \
     ParameterType, \
     Parameter, \
     SetParametersResult, \
-    FloatingPointRange
+    FloatingPointRange, \
+    IntegerRange
 
 # Computation engine (less memory consuming than numpy)
 import math
 
-from enum import Enum
+from enum import IntEnum
 
 # Message types
 from std_msgs.msg import Bool
@@ -92,20 +92,27 @@ except ImportError:
 from geometry_msgs.msg import Twist
 
 
-class Direction(Enum):
-    FORWARD = 0
-    BACKWARD = 1
+class SteeringDirection(IntEnum):
     LEFT = 2
     RIGHT = 3
 
 
-class RunMode(Enum):
+class ThrottleDirection(IntEnum):
+    FORWARD = 0
+    BACKWARD = 1
+
+
+class RunMode(IntEnum):
     BASIC = 0
     BASIC_VESC = 1
     SIMULATION = 2
 
+    @classmethod
+    def has_name(cls, name: str) -> bool:
+        return name in cls._member_names_
 
-class ControlMode(Enum):
+
+class ControlMode(IntEnum):
     LEGACY = 0
     JOINT = 1
     METRIC = 2
@@ -118,46 +125,76 @@ class InitError(Exception):
 
 class DriveApiNode(Node):
 
-    def __init__(self, create_callbacks=False, simulation=False, use_vesc=False):
+    def __init__(self):
         super().__init__(node_name='drive_api')
 
-        self.get_logger().info(f'initializing, simulation={simulation}, use_vesc={use_vesc}')
+        self.get_logger().info(f'initializing...')
 
-        # publishers
-        self.pub = None  # self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
-        self.pub_cmd_vel = None  # self.create_publisher(msg_type=Twist, topic='cmd_vel', qos_profile=1)
-        self.pub_vesc = None  # self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)
+        # configuration
+        self.config_initialized: bool = False
+        # config map
+        # initialized from parameters in add_on_set_parameters_callback
+        self.config: Dict[str, Any] = {}
+        # first register parameters callbacks
+        # (so they are triggered also for the initial invocation when declaring the parameters)
+        # note: the order matters!
+        #   callbacks are added in front to the list of callbacks
+        #   so we need to add them in the reverse order
+        self.add_on_set_parameters_callback(self.set_parameters_copy_and_recalculate_callback)
+        self.add_on_set_parameters_callback(self.set_parameters_validate_callback)
+        # then declare all parameters and let their values automatically get populated with CLI or files overrides)
+        self.setup_parameters()
+        # set flag to indicate that all parameters are loaded
+        # and that set_parameters_copy_and_recalculate_callback should invoke recalculate_derived_configs
+        # for any future updates
+        self.config_initialized = True
+        # manually invoke recalculate_derived_configs for the first time
+        self.recalculate_derived_configs()
 
-        #  variables
+        # state
         self.msg = DriveValues()
         self.msg_vesc = Float64()
         self.msg_cmd_vel = Twist()
-        self.lock = threading.Lock()
-        # TODO: replace constants with parameters
-        self.constants = {}
-        self.eStop = True
-        self.run_mode = None
+        self.eStop: bool = True
+        self.run_mode: RunMode = RunMode[self.get_parameter('run_mode').value.upper()]
 
+        # publishers
+        self.pub = None  # self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
+        self.pub_vesc = None  # self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)
+        self.pub_cmd_vel = None  # self.create_publisher(msg_type=Twist, topic='cmd_vel', qos_profile=1)
+
+        if self.run_mode == RunMode.BASIC:
+            self.pub = self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
+            pub_function = self.publish
+        elif self.run_mode == RunMode.BASIC_VESC:
+            self.pub = self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
+            self.pub_vesc = self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)
+            pub_function = self.publish_with_vesc
+        elif self.run_mode == RunMode.SIMULATION:
+            self.pub_cmd_vel = self.create_publisher(msg_type=Twist, topic='cmd_vel', qos_profile=1)
+            pub_function = self.publish_sim
+        else:
+            raise InitError('unknown run mode')
+
+        # subscriptions
         self.dapi_cmds_subscription = None
         self.cmds_subscription = None
 
-        # Create callbacks if requested
-        if create_callbacks:
-            if USE_DAPI_COMMANDS:
-                self.dapi_cmds_subscription = self.create_subscription(
-                    msg_type=DriveApiValues,
-                    topic='/drive_api/command',
-                    callback=self.api_callback,
-                    qos_profile=1,
-                )
+        if USE_DAPI_COMMANDS:
+            self.dapi_cmds_subscription = self.create_subscription(
+                msg_type=DriveApiValues,
+                topic='/drive_api/command',
+                callback=self.api_callback,
+                qos_profile=1,
+            )
 
-            if USE_COMMANDS:
-                self.cmds_subscription = self.create_subscription(
-                    msg_type=CommandArrayStamped,
-                    topic='/command',
-                    callback=self.command_callback,
-                    qos_profile=1,
-                )
+        if USE_COMMANDS:
+            self.cmds_subscription = self.create_subscription(
+                msg_type=CommandArrayStamped,
+                topic='/command',
+                callback=self.command_callback,
+                qos_profile=1,
+            )
 
         # Register to 2-way /eStop
         self.estop_subscription = self.create_subscription(
@@ -167,31 +204,10 @@ class DriveApiNode(Node):
             qos_profile=1,
         )
 
-        # TODO: load from params
-        # Action modifiers for simulation (can be received only after 'init_node' as they are private).
-        self.declare_parameter(
-            name='speed_modifier',
-            value=1.0,
-            descriptor=ParameterDescriptor(
-                type=ParameterType.PARAMETER_DOUBLE,
-                description='Speed modifier for simulation mode ONLY.',
-            ),
-        )
-        self.declare_parameter(
-            name='steer_modifier',
-            value=1.0,
-            descriptor=ParameterDescriptor(
-                type=ParameterType.PARAMETER_DOUBLE,
-                description='Steering modifier for simulation mode ONLY.',
-            ),
-        )
-        self.constants['SIM_SPEEDUP'] = self.get_parameter('speed_modifier').value
-        self.constants['SIM_STEERUP'] = self.get_parameter('steer_modifier').value
-
+        # fixed rate publish loop
         # TODO: https://answers.ros.org/question/358343/rate-and-sleep-function-in-rclpy-library-for-ros2/
         # TODO: https://nicolovaligi.com/concurrency-and-parallelism-in-ros1-and-ros2-application-apis.html
         # TODO: https://yuzhangbit.github.io/tools/several-ways-of-writing-a-ros-node/
-
         # Function rate() creates rate object to loop at the desired rate in Hz
         # if rospy.has_param('~rate'):
         #     rate = rospy.Rate(rospy.get_param('~rate'))
@@ -203,42 +219,15 @@ class DriveApiNode(Node):
         #     self.get_logger().info('Publishing the messages with default rate 10 Hz.')
         # TODO: configurable rate (via param)
         # self.pub_rate = self.create_rate(frequency=10)
-
-        # Create VESC publisher
-        if use_vesc:
-            self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)
-
-        # Propagate run mode
-        self.run_mode = RunMode.BASIC_VESC if use_vesc else (RunMode.BASIC if not simulation else RunMode.SIMULATION)
-
-        # Create SIMULATION publisher
-        if self.run_mode == RunMode.SIMULATION:
-            self.pub_cmd_vel = self.create_publisher(msg_type=Twist, topic='cmd_vel', qos_profile=1)
-        else:
-            self.pub = self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
-
-        # Attach publish function
-        if use_vesc and ('CALM_SPEED' in self.constants) and ('CALM_STEER' in self.constants):
-            pub_function = self.publish_with_vesc
-        elif simulation:
-            pub_function = self.publish_sim
-        elif ('CALM_SPEED' in self.constants) and ('CALM_STEER' in self.constants):
-            pub_function = self.publish
-        else:
-            self.get_logger().error('Unable to attach a publish function. Shutting down the node.')
-            raise InitError('Unable to attach a publish function. Shutting down the node.')
-
-        # TODO: remove this horrible thing, use self.pub_rate (see commented code line 205)
-        self.timer = self.create_timer(1.0 / 10, pub_function)
-
         # Function is_shutdown() reacts to exit flag (Ctrl+C, etc.)
         # TODO: rewrite
         # while rclpy.ok():
         #     self.get_logger().info('calling pub_function()')
         #     pub_function()
         #     self.pub_rate.sleep()
+        self.timer = self.create_timer(1.0 / self.config['publish_rate'], pub_function)
 
-        self.get_logger().info(f'run_mode={self.run_mode}')
+        self.get_logger().info(f'run_mode={self.run_mode.name.lower()}')
 
         self.get_logger().info('constructor exit')
 
@@ -246,47 +235,389 @@ class DriveApiNode(Node):
 
     def setup_parameters(self):
 
-        # TODO
+        # TODO: uninitialized values for statically typed params do not cause failure?
+
+        # (name, value, descriptor)
+        params_def: List[Tuple[str, Any, ParameterDescriptor]] = [
+            (
+                'drive_battery.cells',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of cells of the drive battery (the one for the motor and the servo)',
+                    integer_range=[IntegerRange(
+                        from_value=1,
+                        to_value=5,
+                        step=1,
+                    )],
+                )
+            ),
+            (
+                'drive_battery.cell_voltage',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='voltage of a cell of the battery [V]',
+                    floating_point_range=[FloatingPointRange(
+                        from_value=1.0,
+                        to_value=10.0,
+                        step=0.1,
+                    )],
+                )
+            ),
+            # (
+            #     # TODO
+            #     'motor.to_erpm',
+            #     None,
+            #     ParameterDescriptor(
+            #         type=ParameterType.PARAMETER_DOUBLE,
+            #         description='TODO',
+            #     )
+            # ),
+            # (
+            #     # TODO
+            #     'motor.erpm_max',
+            #     None,
+            #     ParameterDescriptor(
+            #         type=ParameterType.PARAMETER_DOUBLE,
+            #         # TODO: better description, correct unit
+            #         description='TODO',
+            #     )
+            # ),
+            (
+                'motor.back_emf',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    # TODO: better description, correct unit
+                    description='constant velocity of the motor in [Kv]',
+                )
+            ),
+            (
+                'motor.poles',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of poles in the motor',
+                )
+            ),
+            (
+                'motor.pinion',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of teeth on the gear of the motor',
+                )
+            ),
+            (
+                'differential.spur',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of teeth on the gear connected with motor gear',
+                )
+            ),
+            (
+                'differential.pinion',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of teeth on the gear before the wheels',
+                )
+            ),
+            (
+                'differential.ring',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='number of teeth on the wheel gear connected with differential gear',
+                )
+            ),
+            (
+                'wheels.radius',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='radius of the wheels [m]',
+                )
+            ),
+            (
+                'pwm.throttle.calm_value',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.throttle.forward.min',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.throttle.forward.max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.throttle.backward.min',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.throttle.backward.max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.steering.calm_value',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.steering.left.min',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.steering.left.max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.steering.right.min',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'pwm.steering.right.max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    description='TODO',
+                )
+            ),
+            (
+                'angular_steering.left_max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='in degrees',
+                    floating_point_range=[FloatingPointRange(
+                        from_value=0.0,
+                        to_value=90.0,
+                        step=0.0,
+                    )],
+                )
+            ),
+            (
+                'angular_steering.right_max',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='in degrees',
+                    floating_point_range=[FloatingPointRange(
+                        from_value=0.0,
+                        to_value=90.0,
+                        step=0.0,
+                    )],
+                )
+            ),
+            (
+                'simulation.throttle_modifier',
+                1.0,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='Throttle modifier for simulation mode.',
+                )
+            ),
+            (
+                'simulation.steering_modifier',
+                1.0,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_DOUBLE,
+                    description='Steering modifier for simulation mode.',
+                )
+            ),
+            (
+                'run_mode',
+                None,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_STRING,
+                    read_only=True,
+                    description='Drive API mode',
+                    additional_constraints='allowed values are basic, basic_vesc, simulation',
+                )
+            ),
+            (
+                'publish_rate',
+                10,
+                ParameterDescriptor(
+                    type=ParameterType.PARAMETER_INTEGER,
+                    read_only=True,
+                    description='Drive API publish rate [Hz]',
+                )
+            ),
+        ]
+
+        self.declare_parameters(
+            namespace='',
+            parameters=params_def,
+        )
 
         pass
+
+    def set_parameters_validate_callback(self, parameters: List[Parameter]) -> SetParametersResult:
+        """Called when there is a request to set one or multiple parameters
+
+        Called even for the initial parameter declaration (if registered before the declaration).
+
+        Registered using self.add_on_set_parameters_callback(self.reconfigure_callback).
+
+        Called for each parameter separately (i.e. len(parameters) == 1),
+        unless multiple parameters are set using set_parameters_atomically (then len(parameters) >= 1).
+
+        Before this callback is called, parameters' values are validated against their specified constraints (if any).
+        If type or constraints validation fails, this callback will not be called at all.
+
+        If this callback returns SetParametersResult(successful=False), the values will not be set.
+
+        """
+
+        # self.get_logger().info('set_parameters_validate_callback')
+
+        # validate parameters
+        for param in parameters:
+            # print(f'  param={param.name} value={param.value}')
+            if param.value is None:
+                return SetParametersResult(
+                    successful=False,
+                    reason=f'missing value for {param.name}'
+                )
+            # validate run_mode
+            if param.name == 'run_mode':
+                if not RunMode.has_name(param.value.upper()):
+                    return SetParametersResult(
+                        successful=False,
+                        reason=f'invalid run_mode=\'{param.value}\''
+                    )
+            pass
+
+        # if we pass successful=False, parameter value will not be set
+        # if parameter set was attempted using self.set_parameter*, node will exit with an error
+        # if parameter set was attempted remotely, the remote caller is just passed the result
+        # (failure and the optional configurable reason='why it was unsuccessful')
+        return SetParametersResult(successful=True)
+
+        pass
+
+    def recalculate_derived_configs(self):
+        self.get_logger().info('recalculate_derived_configs')
+        self.config['pwm.throttle.forward.range'] = \
+            self.config['pwm.throttle.forward.max'] - self.config['pwm.throttle.forward.min']
+        self.config['pwm.throttle.backward.range'] = \
+            self.config['pwm.throttle.backward.max'] - self.config['pwm.throttle.backward.min']
+        self.config['pwm.steering.left.range'] = \
+            self.config['pwm.steering.left.max'] - self.config['pwm.steering.left.min']
+        self.config['pwm.steering.right.range'] = \
+            self.config['pwm.steering.right.max'] - self.config['pwm.steering.right.min']
+        # TODO: differing calculation for erpm_max in the original drive_api_node.py
+        self.config['vesc.throttle.erpm_max'] = \
+            (self.config['motor.poles'] / 2.0) * self.config['motor.back_emf'] \
+            * self.config['drive_battery.cells'] * self.config['drive_battery.cell_voltage']
+        self.config['vesc.throttle.to_erpm'] = \
+            (self.config['motor.poles'] / 2.0) \
+            * (1.0 * self.config['differential.spur'] / self.config['motor.pinion']) \
+            * (1.0 * self.config['differential.ring'] / self.config['differential.pinion']) \
+            / (2.0 * math.pi * self.config['wheels.radius']) \
+            * 60
+        pass
+
+    def set_parameters_copy_and_recalculate_callback(self, parameters: List[Parameter]) -> SetParametersResult:
+        """Called when there is a request to set one or multiple parameters
+
+        Called even for the initial parameter declaration (if registered before the declaration).
+
+        Registered using self.add_on_set_parameters_callback(self.reconfigure_callback).
+
+        Called for each parameter separately (i.e. len(parameters) == 1),
+        unless multiple parameters are set using set_parameters_atomically (then len(parameters) >= 1).
+
+        Before this callback is called, parameters' values are validated against their specified constraints (if any).
+        If type or constraints validation fails, this callback will not be called at all.
+
+        If this callback returns SetParametersResult(successful=False), the values will not be set.
+
+        """
+
+        # self.get_logger().info('set_parameters_copy_and_recalculate_callback')
+
+        # copy parameters to config
+        for param in parameters:
+            # print(f'  param={param.name} value={param.value}')
+            if param.name == 'angular_steering.left_max' or param.name == 'angular_steering.right_max':
+                self.config[param.name] = math.radians(param.value)  # convert degrees to radians
+            else:
+                self.config[param.name] = param.value  # use the value as it is
+            pass
+
+        if self.config_initialized:
+            self.recalculate_derived_configs()
+
+        return SetParametersResult(successful=True)
 
     def publish(self):
         """Publish currently stored variables.
 
-        Note: Used when not in simulation mode. Only 'pub' is used.
+        Note: Used only in BASIC mode.
         """
-
-        with self.lock:
-            self.pub.publish(self.msg)
-            # pub_cmd_vel.publish(msg_cmd_vel)
+        self.pub.publish(self.msg)
 
     def publish_with_vesc(self):
         """Publish currently stored variables.
 
-        Note: Used when not in simulation mode and when 'use_vesc' is True.
-        Note: Mutually exclusive with 'publish'.
+        Note: Used only in BASIC_VESC mode.
         """
-
-        with self.lock:
-            self.pub.publish(
-                DriveValues(pwm_drive=self.constants['CALM_SPEED'], pwm_angle=self.msg.pwm_angle))
-            self.pub_vesc.publish(self.msg_vesc)
+        self.pub.publish(DriveValues(pwm_drive=self.config['pwm.throttle.calm_value'], pwm_angle=self.msg.pwm_angle))
+        self.pub_vesc.publish(self.msg_vesc)
 
     def publish_sim(self):
         """Publish currently stored variables.
 
-        Note: Used when in simulation mode. Only 'pub_cmd_vel' is used.
+        Note: Used only in SIMULATION mode.
         """
+        self.pub_cmd_vel.publish(self.msg_cmd_vel)
 
-        with self.lock:
-            self.pub_cmd_vel.publish(self.msg_cmd_vel)
-
-    def set_speed(self, speed, direction, control_mode=ControlMode.LEGACY):
+    def set_speed(self, speed: float, direction: ThrottleDirection, control_mode: ControlMode = ControlMode.LEGACY):
         """Set the car speed at desired value with given direction.
 
         Arguments:
-        speed -- speed, float
-        direction -- direction of movement, Direction enum
+        speed -- speed
+        direction -- direction of movement
 
         Returns:
         success -- False if encountered errors, otherwise True
@@ -301,207 +632,159 @@ class DriveApiNode(Node):
         ANGULAR -- not supported
         """
 
-        # Check eStop
+        # skip if stopped
         if self.eStop:
             return False
 
-        # Check the self.constants dict
-        if not self.constants:
-            return False
-
-        # Check the control mode
+        # validate arguments
         if not isinstance(control_mode, ControlMode):
             return False
+        if not isinstance(direction, ThrottleDirection):
+            return False
 
-        # Continue according to the selected mode
+        # continue according to the selected mode
         if control_mode == ControlMode.LEGACY:
-            # Check the speed
+
+            # validate the speed
             if speed < 0 or speed > 1:
                 return False
 
-            # Check the direction
-            if not isinstance(direction, Direction):
+            if direction == ThrottleDirection.BACKWARD:
+                if self.run_mode == RunMode.BASIC:
+                    self.msg.pwm_drive = int(
+                        self.config['pwm.throttle.backward.min']
+                        + speed * self.config['pwm.throttle.backward.range']
+                    )
+                    return True
+
+                if self.run_mode == RunMode.SIMULATION:
+                    self.msg_cmd_vel.linear.x = -speed * self.config['simulation.throttle_modifier']
+                    return True
+
+                if self.run_mode == RunMode.BASIC_VESC:
+                    self.msg_vesc.data = -speed * self.config['vesc.throttle.erpm_max']
+                    return True
+
                 return False
 
-            # Set corresponding variable
-            if direction == Direction.BACKWARD:
-                with self.lock:
-                    if self.run_mode == RunMode.BASIC:
-                        if ('BACKWARD_MIN' in self.constants) and ('BACKWARD' in self.constants):
-                            self.msg.pwm_drive = int(
-                                self.constants['BACKWARD_MIN'] + speed * self.constants['BACKWARD'])
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute PWM speed because \'BACKWARD_MAX\' / \'BACKWARD_MIN\' is not set.'
-                            )
-                            return False
+            if direction == ThrottleDirection.FORWARD:
+                if self.run_mode == RunMode.BASIC:
+                    self.msg.pwm_drive = int(
+                        self.config['pwm.throttle.forward.min'] + speed
+                        * self.config['pwm.throttle.forward.range']
+                    )
+                    return True
 
-                    elif self.run_mode == RunMode.SIMULATION:
-                        self.msg_cmd_vel.linear.x = -speed * self.constants['SIM_SPEEDUP']
+                if self.run_mode == RunMode.SIMULATION:
+                    self.msg_cmd_vel.linear.x = speed * self.config['simulation.throttle_modifier']
+                    return True
 
-                    elif self.run_mode == RunMode.BASIC_VESC:
-                        if 'ERPM_MAX' in self.constants:
-                            self.msg_vesc.data = -speed * self.constants['ERPM_MAX']
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute VESC speed because \'ERPM_MAX\' is not set.'
-                            )
-                            return False
+                if self.run_mode == RunMode.BASIC_VESC:
+                    self.msg_vesc.data = speed * self.config['vesc.throttle.erpm_max']
+                    return True
 
-            elif direction == Direction.FORWARD:
-                with self.lock:
-                    if self.run_mode == RunMode.BASIC:
-                        if ('FORWARD_MIN' in self.constants) and ('FORWARD' in self.constants):
-                            self.msg.pwm_drive = int(self.constants['FORWARD_MIN'] + speed * self.constants['FORWARD'])
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute PWM speed because \'FORWARD_MAX\' / \'FORWARD_MIN\' is not set.'
-                            )
-                            return False
-
-                    elif self.run_mode == RunMode.SIMULATION:
-                        self.msg_cmd_vel.linear.x = speed * self.constants['SIM_SPEEDUP']
-
-                    elif self.run_mode == RunMode.BASIC_VESC:
-                        if 'ERPM_MAX' in self.constants:
-                            self.msg_vesc.data = speed * self.constants['ERPM_MAX']
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute VESC speed because \'ERPM_MAX\' is not set.'
-                            )
-                            return False
-            else:
-                return False
+            return False
 
         elif control_mode == ControlMode.JOINT:
-            # Check the speed
+
+            # validate the speed
             if speed < -1 or speed > 1:
                 return False
 
-            # Check the direction
-            if not isinstance(direction, Direction):
-                return False
-
-            # Set corresponding variable
             if speed == 0:
-                self.stop()
-            elif (
-                (direction == Direction.FORWARD and speed > 0)
-                or (direction == Direction.BACKWARD and speed < 0)
+                return self.stop()
+
+            if (
+                (direction == ThrottleDirection.FORWARD and speed > 0)
+                or (direction == ThrottleDirection.BACKWARD and speed < 0)
             ):
-                with self.lock:
-                    if self.run_mode == RunMode.BASIC:
-                        if ('FORWARD_MIN' in self.constants) and ('FORWARD' in self.constants):
-                            self.msg.pwm_drive = int(
-                                self.constants['FORWARD_MIN'] + abs(speed) * self.constants['FORWARD'])
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute PWM speed because \'FORWARD_MAX\' / \'FORWARD_MIN\' is not set.'
-                            )
-                            return False
+                if self.run_mode == RunMode.BASIC:
+                    self.msg.pwm_drive = int(
+                        self.config['pwm.throttle.forward.min']
+                        + abs(speed) * self.config['pwm.throttle.forward.range']
+                    )
+                    return True
 
-                    elif self.run_mode == RunMode.SIMULATION:
-                        self.msg_cmd_vel.linear.x = abs(speed) * self.constants['SIM_SPEEDUP']
+                if self.run_mode == RunMode.SIMULATION:
+                    self.msg_cmd_vel.linear.x = abs(speed) * self.config['simulation.throttle_modifier']
+                    return True
 
-                    elif self.run_mode == RunMode.BASIC_VESC:
-                        if 'ERPM_MAX' in self.constants:
-                            self.msg_vesc.data = abs(speed) * self.constants['ERPM_MAX']
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute VESC speed because \'ERPM_MAX\' is not set.'
-                            )
-                            return False
+                elif self.run_mode == RunMode.BASIC_VESC:
+                    self.msg_vesc.data = abs(speed) * self.config['vesc.throttle.erpm_max']
+                    return True
 
-            elif (
-                (direction == Direction.BACKWARD and speed > 0)
-                or (direction == Direction.FORWARD and speed < 0)
+                return False
+
+            if (
+                (direction == ThrottleDirection.BACKWARD and speed > 0)
+                or (direction == ThrottleDirection.FORWARD and speed < 0)
             ):
-                with self.lock:
-                    if self.run_mode == RunMode.BASIC:
-                        if ('BACKWARD_MIN' in self.constants) and ('BACKWARD' in self.constants):
-                            self.msg.pwm_drive = int(
-                                self.constants['BACKWARD_MIN'] + abs(speed) * self.constants['BACKWARD'])
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute PWM speed because \'BACKWARD_MAX\' / \'BACKWARD_MIN\' is not set.'
-                            )
-                            return False
+                if self.run_mode == RunMode.BASIC:
+                    self.msg.pwm_drive = int(
+                        self.config['pwm.throttle.backward.min']
+                        + abs(speed) * self.config['pwm.throttle.backward.range']
+                    )
+                    return True
 
-                    elif self.run_mode == RunMode.SIMULATION:
-                        self.msg_cmd_vel.linear.x = -abs(speed) * self.constants['SIM_SPEEDUP']
+                if self.run_mode == RunMode.SIMULATION:
+                    self.msg_cmd_vel.linear.x = -abs(speed) * self.config['simulation.throttle_modifier']
+                    return True
 
-                    elif self.run_mode == RunMode.BASIC_VESC:
-                        if 'ERPM_MAX' in self.constants:
-                            self.msg_vesc.data = -abs(speed) * self.constants['ERPM_MAX']
-                        else:
-                            self.get_logger().info(
-                                'Unable to compute VESC speed because \'ERPM_MAX\' is not set.'
-                            )
-                            return False
-            else:
+                if self.run_mode == RunMode.BASIC_VESC:
+                    self.msg_vesc.data = -abs(speed) * self.config['vesc.throttle.erpm_max']
+                    return True
+
                 return False
 
-        elif control_mode == ControlMode.METRIC:
-            # Check run modes
-            if self.run_mode == RunMode.BASIC:
-                self.get_logger().info('Unsupported run mode for data in \'METRIC\' format.')
-                return False
-
-            # Check the direction
-            if not isinstance(direction, Direction):
-                return False
-
-            # Set corresponding variable
-            if speed == 0:
-                self.stop()
-            elif self.run_mode == RunMode.SIMULATION:
-                with self.lock:
-                    self.msg_cmd_vel.linear.x = speed
-            elif 'TO_ERPM' in self.constants:
-                with self.lock:
-                    self.msg_vesc.data = speed * self.constants['TO_ERPM']
-            else:
-                self.get_logger().info('Unable to compute VESC speed because \'TO_ERPM\' is not set.')
-                return False
-
-        else:
-            self.get_logger().info('Unsupported data format.')
             return False
 
-        return True
+        if control_mode == ControlMode.METRIC:
 
-    def set_forward_speed(self, speed, control_mode=ControlMode.LEGACY):
-        """Trampoline function for 'setSpeed()'."""
-        return self.set_speed(speed, Direction.FORWARD, control_mode)
+            # ControlMode.METRIC is not available in RunMode.BASIC
+            if self.run_mode == RunMode.BASIC:
+                self.get_logger().info('set_speed: Unsupported run_mode for data in \'METRIC\' format.')
+                return False
 
-    def set_backward_speed(self, speed, control_mode=ControlMode.LEGACY):
+            if speed == 0:
+                return self.stop()
+
+            if self.run_mode == RunMode.SIMULATION:
+                self.msg_cmd_vel.linear.x = speed
+                return True
+
+            if self.run_mode == RunMode.BASIC_VESC:
+                self.msg_vesc.data = speed * self.config['vesc.throttle.to_erpm']
+                return True
+
+            return False
+
+        return False
+
+    def set_forward_speed(self, speed: float, control_mode: ControlMode = ControlMode.LEGACY):
         """Trampoline function for 'setSpeed()'."""
-        return self.set_speed(speed, Direction.BACKWARD, control_mode)
+        return self.set_speed(speed, ThrottleDirection.FORWARD, control_mode)
+
+    def set_backward_speed(self, speed: float, control_mode: ControlMode = ControlMode.LEGACY):
+        """Trampoline function for 'setSpeed()'."""
+        return self.set_speed(speed, ThrottleDirection.BACKWARD, control_mode)
 
     def stop(self):
         """Send a calm state speed. It means that the car stops."""
 
         self.get_logger().info(f'stop')
 
-        # Check the self.constants dict
-        if not self.constants:
-            return False
-
-        with self.lock:
-            if 'CALM_SPEED' in self.constants:
-                self.msg.pwm_drive = self.constants['CALM_SPEED']
-
-            self.msg_cmd_vel.linear.x = 0.0
-            self.msg_vesc.data = 0.0
+        self.msg.pwm_drive = self.config['pwm.throttle.calm_value']
+        self.msg_cmd_vel.linear.x = 0.0
+        self.msg_vesc.data = 0.0
 
         return True
 
-    def set_steer(self, steer, direction, control_mode=ControlMode.LEGACY):
+    def set_steer(self, steer: float, direction: SteeringDirection, control_mode: ControlMode = ControlMode.LEGACY):
         """Set the car steering at desired value with given direction.
 
         Arguments:
-        steer -- steer, float
-        direction -- direction of movement, Direction enum
+        steer -- steer
+        direction -- direction of movement
 
         Returns:
         success -- False if encountered errors, otherwise True
@@ -517,197 +800,149 @@ class DriveApiNode(Node):
                    direction is expected to be 'LEFT', otherwise it is flipped
         """
 
-        # Check eStop
+        # skip if stopped
         if self.eStop:
             return False
 
-        # Check the self.constants dict
-        if not self.constants:
-            return False
-
-        # Check the control mode
+        # validate arguments
         if not isinstance(control_mode, ControlMode):
             return False
+        if not isinstance(direction, SteeringDirection):
+            return False
 
-        # Continue according to the select mode
+        # continue according to the selected mode
         if control_mode == ControlMode.LEGACY:
-            # Check the steering
+
+            # validate the steering
             if steer < 0 or steer > 1:
                 return False
 
-            # Check the direction
-            if not isinstance(direction, Direction):
-                return False
-
-            # Simulation mode
+            # simulation mode
             if self.run_mode == RunMode.SIMULATION:
                 if steer == 0:
                     self.reset_steer()
                 else:
-                    self.msg_cmd_vel.angular.z = steer * self.constants['SIM_STEERUP'] \
-                                                 * (1.0 if direction == Direction.LEFT else -1.0)
-
+                    self.msg_cmd_vel.angular.z = \
+                        steer * self.config['simulation.steering_modifier'] \
+                        * (1.0 if direction == SteeringDirection.LEFT else -1.0)
                 return True
 
-            # Set corresponding variable
-            if direction == Direction.LEFT:
-                with self.lock:
-                    if ('LEFT_MIN' in self.constants) and ('LEFT' in self.constants):
-                        self.msg.pwm_angle = int(self.constants['LEFT_MIN'] + steer * self.constants['LEFT'])
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'LEFT_MAX\' / \'LEFT_MIN\' is not set.'
-                        )
-                        return False
+            # other modes
 
-            elif direction == Direction.RIGHT:
-                with self.lock:
-                    if ('RIGHT_MIN' in self.constants) and ('RIGHT' in self.constants):
-                        self.msg.pwm_angle = int(self.constants['RIGHT_MIN'] + steer * self.constants['RIGHT'])
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'RIGHT_MAX\' / \'RIGHT_MIN\' is not set.'
-                        )
-                        return False
+            if direction == SteeringDirection.LEFT:
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.left.min']
+                    + steer * self.config['pwm.steering.left.range']
+                )
+                return True
 
-            else:
-                return False
+            if direction == SteeringDirection.RIGHT:
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.right.min']
+                    + steer * self.config['pwm.steering.right.range']
+                )
+                return True
+
+            return False
 
         elif control_mode == ControlMode.JOINT:
-            # Check the steering
+
+            # validate the steering
             if steer < -1 or steer > 1:
                 return False
 
-            # Check the direction
-            if not isinstance(direction, Direction):
-                return False
-
-            # Simulation mode
+            # simulation mode
             if self.run_mode == RunMode.SIMULATION:
                 if steer == 0:
                     self.reset_steer()
                 else:
-                    self.msg_cmd_vel.angular.z = abs(steer) * self.constants['SIM_STEERUP'] \
-                                                 * (1.0 if direction == Direction.LEFT else -1.0)
-
+                    self.msg_cmd_vel.angular.z = \
+                        abs(steer) * self.config['simulation.steering_modifier'] \
+                        * (1.0 if direction == SteeringDirection.LEFT else -1.0)
                 return True
 
             # Set corresponding variable
             if steer == 0:
                 self.reset_steer()
-            elif (
-                (direction == Direction.LEFT and steer > 0)
-                or (direction == Direction.RIGHT and steer < 0)
-            ):
-                with self.lock:
-                    if ('LEFT_MIN' in self.constants) and ('LEFT' in self.constants):
-                        self.msg.pwm_angle = int(self.constants['LEFT_MIN'] + abs(steer) * self.constants['LEFT'])
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'LEFT_MAX\' / \'LEFT_MIN\' is not set.'
-                        )
-                        return False
+                return True
 
-            elif (
-                (direction == Direction.RIGHT and steer > 0)
-                or (direction == Direction.LEFT and steer < 0)
+            if (
+                (direction == SteeringDirection.LEFT and steer > 0)
+                or (direction == SteeringDirection.RIGHT and steer < 0)
             ):
-                with self.lock:
-                    if ('RIGHT_MIN' in self.constants) and ('RIGHT' in self.constants):
-                        self.msg.pwm_angle = int(self.constants['RIGHT_MIN'] + abs(steer) * self.constants['RIGHT'])
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'RIGHT_MAX\' / \'RIGHT_MIN\' is not set.'
-                        )
-                        return False
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.left.min']
+                    + abs(steer) * self.config['pwm.steering.left.range']
+                )
+                return True
 
-            else:
-                return False
+            if (
+                (direction == SteeringDirection.RIGHT and steer > 0)
+                or (direction == SteeringDirection.LEFT and steer < 0)
+            ):
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.right.min']
+                    + abs(steer) * self.config['pwm.steering.right.range']
+                )
+                return True
+
+            return False
 
         elif control_mode == ControlMode.ANGULAR:
-            # Check the direction
-            if not isinstance(direction, Direction):
-                return False
 
-            # Simulation mode
+            # simulation mode
             if self.run_mode == RunMode.SIMULATION:
                 if steer == 0:
                     self.reset_steer()
                 else:
-                    self.msg_cmd_vel.angular.z = steer if direction == Direction.LEFT else -steer
-
+                    self.msg_cmd_vel.angular.z = steer if direction == SteeringDirection.LEFT else -steer
                 return True
-
-            # Check the required parameters
-            if ('SERVO_LEFT_MAX' not in self.constants) or ('SERVO_RIGHT_MAX' not in self.constants):
-                self.get_logger().info(
-                    'Unable to compute PWM steer because \'SERVO_LEFT_MAX\' / \'SERVO_RIGHT_MAX\' is not set.'
-                )
-                return False
 
             if steer == 0:
                 self.reset_steer()
-            elif (
-                (direction == Direction.LEFT and steer > 0)
-                or (direction == Direction.RIGHT and steer < 0)
-            ):
-                with self.lock:
-                    if ('LEFT_MIN' in self.constants) and ('LEFT' in self.constants):
-                        self.msg.pwm_angle = int(
-                            self.constants['LEFT_MIN'] + min(abs(steer) / self.constants['SERVO_LEFT_MAX'], 1.0) *
-                            self.constants[
-                                'LEFT'])
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'LEFT_MAX\' / \'LEFT_MIN\' is not set.'
-                        )
-                        return False
+                return True
 
-            elif (
-                (direction == Direction.RIGHT and steer > 0)
-                or (direction == Direction.LEFT and steer < 0)
+            if (
+                (direction == SteeringDirection.LEFT and steer > 0)
+                or (direction == SteeringDirection.RIGHT and steer < 0)
             ):
-                with self.lock:
-                    if ('RIGHT_MIN' in self.constants) and ('RIGHT' in self.constants):
-                        self.msg.pwm_angle = int(
-                            self.constants['RIGHT_MIN']
-                            + min(abs(steer) / self.constants['SERVO_RIGHT_MAX'], 1.0)
-                            * self.constants['RIGHT']
-                        )
-                    else:
-                        self.get_logger().info(
-                            'Unable to compute PWM steer because \'RIGHT_MAX\' / \'RIGHT_MIN\' is not set.'
-                        )
-                        return False
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.left.min']
+                    + min(abs(steer) / self.config['angular_steering.left_max'], 1.0)
+                    * self.config['pwm.steering.left.range'])
+                return True
 
-        else:
-            self.get_logger().info('Unsupported data format.')
+            if (
+                (direction == SteeringDirection.RIGHT and steer > 0)
+                or (direction == SteeringDirection.LEFT and steer < 0)
+            ):
+                self.msg.pwm_angle = int(
+                    self.config['pwm.steering.right.min']
+                    + min(abs(steer) / self.config['angular_steering.right_max'], 1.0)
+                    * self.config['pwm.steering.right.range']
+                )
+                return True
+
             return False
 
-        return True
+        return False
 
-    def set_left_steer(self, steer, control_mode=ControlMode.LEGACY):
+    def set_left_steer(self, steer: float, control_mode: ControlMode = ControlMode.LEGACY):
         """Trampoline function for 'setSteer()'."""
-        return self.set_steer(steer, Direction.LEFT, control_mode)
+        return self.set_steer(steer, SteeringDirection.LEFT, control_mode)
 
-    def set_right_steer(self, steer, control_mode=ControlMode.LEGACY):
+    def set_right_steer(self, steer: float, control_mode: ControlMode = ControlMode.LEGACY):
         """Trampoline function for 'setSteer()'."""
-        return self.set_steer(steer, Direction.RIGHT, control_mode)
+        return self.set_steer(steer, SteeringDirection.RIGHT, control_mode)
 
     def reset_steer(self):
         """Send a calm state steer. It means that the car turns the wheels to go straight."""
 
         self.get_logger().info(f'reset_steer')
 
-        # Check the self.constants dict
-        if not self.constants:
-            return False
+        self.msg.pwm_angle = self.config['pwm.steering.calm_value']
+        self.msg_cmd_vel.angular.z = 0.0
 
-        with self.lock:
-            if 'CALM_STEER' in self.constants:
-                self.msg.pwm_angle = self.constants['CALM_STEER']
-
-            self.msg_cmd_vel.angular.z = 0.0
         pass
 
     def api_callback(self, data: DriveApiValues):
@@ -740,74 +975,76 @@ class DriveApiNode(Node):
         data -- structure received on topic /command, defined by CommandArrayStamped
         """
 
-        # Check eStop
+        # skip if stopped
         if self.eStop:
             return
 
-        if len(data.commands) > 0:
-            for c in data.commands:
-                if c.command == 'speed' and len(c.parameters) > 0:
-                    for p in c.parameters:
-                        success = False
+        if len(data.commands) <= 0:
+            return
 
-                        # LEGACY
-                        if p.parameter == 'forward':
-                            if p.value < 0:
-                                success = self.stop()
-                            else:
-                                success = self.set_forward_speed(p.value, ControlMode.LEGACY)
-                        elif p.parameter == 'backward':
-                            if p.value < 0:
-                                success = self.stop()
-                            else:
-                                success = self.set_backward_speed(p.value, ControlMode.LEGACY)
-                        # JOINT
-                        elif p.parameter == 'norm' or p.parameter == 'joint':
-                            success = self.set_forward_speed(p.value, ControlMode.JOINT)
-                        # METRIC
-                        elif p.parameter == 'metric' or p.parameter == 'm/s':
-                            success = self.set_forward_speed(p.value, ControlMode.METRIC)
+        for c in data.commands:
+            if c.command == 'speed' and len(c.parameters) > 0:
+                for p in c.parameters:
+                    success = False
 
-                        if not success:
-                            self.get_logger().info(
-                                f'Unable to process \'{c.command}\' parameter: {p.parameter} ({p.value:f})'
-                            )
-                            continue
+                    # LEGACY
+                    if p.parameter == 'forward':
+                        if p.value < 0:
+                            success = self.stop()
+                        else:
+                            success = self.set_forward_speed(p.value, ControlMode.LEGACY)
+                    elif p.parameter == 'backward':
+                        if p.value < 0:
+                            success = self.stop()
+                        else:
+                            success = self.set_backward_speed(p.value, ControlMode.LEGACY)
+                    # JOINT
+                    elif p.parameter == 'norm' or p.parameter == 'joint':
+                        success = self.set_forward_speed(p.value, ControlMode.JOINT)
+                    # METRIC
+                    elif p.parameter == 'metric' or p.parameter == 'm/s':
+                        success = self.set_forward_speed(p.value, ControlMode.METRIC)
 
-                        break
-                elif c.command == 'steer' and len(c.parameters) > 0:
-                    for p in c.parameters:
-                        success = False
+                    if not success:
+                        self.get_logger().info(
+                            f'Unable to process \'{c.command}\' parameter: {p.parameter} ({p.value:f})'
+                        )
+                        continue
 
-                        # LEGACY
-                        if p.parameter == 'left':
-                            if p.value < 0:
-                                success = self.stop()
-                            else:
-                                success = self.set_left_steer(p.value, ControlMode.LEGACY)
-                        elif p.parameter == 'right':
-                            if p.value < 0:
-                                success = self.stop()
-                            else:
-                                success = self.set_right_steer(p.value, ControlMode.LEGACY)
-                        # JOINT
-                        elif p.parameter == 'norm' or p.parameter == 'joint':
-                            success = self.set_left_steer(p.value, ControlMode.JOINT)
-                        # ANGULAR
-                        elif p.parameter == 'deg':
-                            success = self.set_left_steer(math.radians(p.value), ControlMode.ANGULAR)
-                        elif p.parameter == 'rad':
-                            success = self.set_left_steer(p.value, ControlMode.ANGULAR)
+                    break
+            elif c.command == 'steer' and len(c.parameters) > 0:
+                for p in c.parameters:
+                    success = False
 
-                        if not success:
-                            self.get_logger().info(
-                                f'Unable to process \'{c.command}\' parameter: {p.parameter} ({p.value:f})'
-                            )
-                            continue
+                    # LEGACY
+                    if p.parameter == 'left':
+                        if p.value < 0:
+                            success = self.stop()
+                        else:
+                            success = self.set_left_steer(p.value, ControlMode.LEGACY)
+                    elif p.parameter == 'right':
+                        if p.value < 0:
+                            success = self.stop()
+                        else:
+                            success = self.set_right_steer(p.value, ControlMode.LEGACY)
+                    # JOINT
+                    elif p.parameter == 'norm' or p.parameter == 'joint':
+                        success = self.set_left_steer(p.value, ControlMode.JOINT)
+                    # ANGULAR
+                    elif p.parameter == 'deg':
+                        success = self.set_left_steer(math.radians(p.value), ControlMode.ANGULAR)
+                    elif p.parameter == 'rad':
+                        success = self.set_left_steer(p.value, ControlMode.ANGULAR)
 
-                        break
-                else:
-                    self.get_logger().info(f'Unable to process command: \'{c.command}\'')
+                    if not success:
+                        self.get_logger().info(
+                            f'Unable to process \'{c.command}\' parameter: {p.parameter} ({p.value:f})'
+                        )
+                        continue
+
+                    break
+            else:
+                self.get_logger().info(f'command_callback: Unable to process command: \'{c.command}\'')
 
         pass
 
@@ -845,18 +1082,10 @@ def main(args=None):
 
     print(f'main args = {args}')
 
-    # TODO: better solution? best practice?
-    simulation = 'simulation=true' in args
-    use_vesc = 'use_vesc=true' in args
-
     node = None
 
     try:
-        node = DriveApiNode(
-            create_callbacks=True,
-            simulation=simulation,
-            use_vesc=use_vesc,
-        )
+        node = DriveApiNode()
         rclpy.spin(node)
     except InitError as e:
         print(f'InitError: {e}', file=sys.stderr)

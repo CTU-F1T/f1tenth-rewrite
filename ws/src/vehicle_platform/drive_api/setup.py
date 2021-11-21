@@ -4,7 +4,7 @@ package_name = 'drive_api'
 
 setup(
     name=package_name,
-    version='0.3.2',
+    version='0.3.3',
     packages=[package_name],
     data_files=[
         (
@@ -15,9 +15,13 @@ setup(
             'share/' + package_name,
             ['package.xml']
         ),
+        # (
+        #     'share/' + package_name + '/launch',
+        #     ['launch/start.launch.py']
+        # ),
         (
-            'share/' + package_name,
-            ['launch/start.launch.py']
+            'share/' + package_name + '/config',
+            ['config/drive_api_node.yaml']
         ),
     ],
     install_requires=['setuptools'],

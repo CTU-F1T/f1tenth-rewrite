@@ -107,17 +107,24 @@ def generate_stage_sample_ftg_launch_description():
         ),
 
         # drive_api
-        launch.actions.IncludeLaunchDescription(
-            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
-                launch_file_path=launch.substitutions.PathJoinSubstitution([
+        launch_ros.actions.Node(
+            package='drive_api',
+            executable='drive_api_node',
+            output='screen',
+            name=launch.substitutions.AnonName(name='drive_api'),
+            parameters=[
+                launch.substitutions.PathJoinSubstitution([
                     launch_ros.substitutions.FindPackageShare(package='drive_api'),
-                    'start.launch.py'
+                    'config',
+                    'drive_api_node.yaml'
                 ]),
-            ),
-            launch_arguments=[
-                ('simulation', 'true'),
-                ('steer_modifier', '0.7'),
-                ('speed_modifier', '7.26'),
+                {
+                    'run_mode': 'simulation',
+                    'simulation.steering_modifier': 0.7,
+                    'simulation.throttle_modifier': 7.26,
+                },
+            ],
+            remappings=[
                 ('/cmd_vel', '/stage_ros2/car/cmd_vel'),
             ],
         ),

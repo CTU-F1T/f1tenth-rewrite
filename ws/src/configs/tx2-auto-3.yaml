@@ -1,0 +1,39 @@
+/drive_api:
+  ros__parameters:
+    drive_battery:
+      cells: 2
+      cell_voltage: 3.7  # V
+    motor:
+      # to_erpm is calculated
+      # erpm_max is calculated
+      back_emf: 3500
+      poles: 4
+      limit: 0
+      pinion: 13
+    differential:
+      spur: 54
+      pinion: 13
+      ring: 37
+    wheels:
+      radius: 0.055  # m
+    pwm:
+      throttle:
+        calm_value: 8953
+        forward:
+          min: 9549
+          max: 12054
+        backward:
+          min: 8417
+          max: 5853
+      steering:
+        calm_value: 9012
+        left:
+          min: 8922
+          max: 5912
+        right:
+          min: 9122
+          max: 12113
+    angular_steering:
+      left_max: 29.106255993  # deg
+      right_max: 27.330086828  # deg
+    run_mode: basic_vesc

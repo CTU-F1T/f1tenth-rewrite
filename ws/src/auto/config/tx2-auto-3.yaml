@@ -39,7 +39,7 @@
     run_mode: basic_vesc
 /teensy_drive:
   ros__parameters:
-    port: /dev/tty.usbmodem52834001
+    port: /dev/tty.teensy
 /vesc:
   ros__parameters:
     port: /dev/tty.vesc

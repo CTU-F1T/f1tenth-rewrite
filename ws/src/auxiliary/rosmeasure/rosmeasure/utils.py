@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# utils.py
 """Utilities for measuring delay within nodes.
 """
 ######################
@@ -7,21 +5,20 @@
 ######################
 
 # ROS Python package
-import rospy
+import rclpy
 
 # Timing
 import time
 
-
 # Parameters
 DISABLED = False
 
-
 # On start check for /delay_measure
 try:
-    TIMING = str(rospy.get_param("/delay_measure", False)).lower() == "true"
+    # TODO: port to ROS 2
+    TIMING = False  # str(rospy.get_param("/delay_measure", False)).lower() == "true"
 
-    #rospy.loginfo("Delay measurement %s" % ("[Enabled]" if TIMING else "[Disabled]"))
+    # rospy.loginfo("Delay measurement %s" % ("[Enabled]" if TIMING else "[Disabled]"))
 
     if not TIMING:
         DISABLED = True
@@ -39,7 +36,7 @@ def conddisable():
 
     def block(f):
         return lambda *x, **y: None
- 
+
     def let_pass(f):
         return f
 
@@ -51,7 +48,8 @@ def conddisable():
 ######################
 
 class Measurer:
-    def __init__(self, name = "", unit = ""):
+
+    def __init__(self, name="", unit=""):
         self._name = name if name != "" else "Measurer"
         self._unit = unit if unit != "" else "s"
         self._start = 0
@@ -59,7 +57,6 @@ class Measurer:
         self._sum = 0
         self._max = 0
         self._last = 0
-
 
     def unitExp(self, unit):
         """Gets power of unit."""
@@ -74,7 +71,6 @@ class Measurer:
         else:
             return 0
 
-
     def convertUnits(self, value, unit_from, unit_to):
         """Converts unit of measured value."""
         f = self.unitExp(unit_from)
@@ -85,20 +81,16 @@ class Measurer:
         else:
             return value * pow(10, f - t)
 
-
     @conddisable()
     def updateStatistics(self):
         self._count += 1
         self._sum += self._last
         self._max = max(self._max, self._last)
 
-
     @conddisable()
     def summary(self):
-        print "%s: cur=%.4f%s avg=%.4f%s max=%.4f%s" % (
-            self._name, self._last, self._unit,
-            self._sum / self._count, self._unit,
-            self._max, self._unit
+        print(
+            f"{self._name}: cur={self._last:.4f}{self._unit} avg={self._sum / self._count:.4f}{self._unit} max={self._max:.4f}{self._unit}"
         )
 
 
@@ -112,12 +104,10 @@ class TimeMeasurer(Measurer):
     def __init__(self, *args, **kwargs):
         Measurer.__init__(self, *args, **kwargs)
 
-
     @conddisable()
     def start(self):
         """Start a measurement."""
         self._start = time.time()
-
 
     @conddisable()
     def end(self):
@@ -142,15 +132,15 @@ class DelayMeasurer(Measurer):
     def __init__(self, *args, **kwargs):
         Measurer.__init__(self, *args, **kwargs)
 
-
     @conddisable()
     def delay(self, header):
         """Records a delay between current time and header."""
         self._last = self.convertUnits(
-            (rospy.Time.now() - header.stamp).to_sec(),
+            0,
+            # TODO: port
+            # (rospy.Time.now() - header.stamp).to_sec(),
             "s",
             self._unit
         )
 
         self.updateStatistics()
-

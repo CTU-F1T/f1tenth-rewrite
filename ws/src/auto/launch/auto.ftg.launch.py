@@ -9,7 +9,7 @@ def generate_launch_description():
         launch.actions.DeclareLaunchArgument(
             name='config',
             description='vehicle config',
-            default_value='tx2-auto-3.yaml',
+            # default_value='tx2-auto-3.yaml',
         ),
 
         launch.actions.SetLaunchConfiguration(
@@ -17,7 +17,7 @@ def generate_launch_description():
             value=launch.substitutions.PathJoinSubstitution([
                 launch_ros.substitutions.FindPackageShare(package='auto'),
                 'config',
-                'tx2-auto-3.yaml'
+                launch.substitutions.LaunchConfiguration(variable_name='config'),
             ]),
         ),
 

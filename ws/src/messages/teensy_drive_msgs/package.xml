@@ -2,21 +2,18 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
 
-	<name>trajectory</name>
-	<version>0.0.2</version>
+	<name>teensy_drive_msgs</name>
+	<version>0.0.0</version>
 	<description>
-		The trajectory package
+		Message definitions for teensy_drive package.
 	</description>
 	<maintainer email="klapajar@fel.cvut.cz">Jaroslav Klapálek</maintainer>
 	<license>Apache License 2.0</license>
-	<author email="kopecdav@fel.cvut.cz">David Kopecký</author>
+	<author email="vajnamar@fel.cvut.cz">Martin Vajnar</author>
 
 	<buildtool_depend>ament_cmake</buildtool_depend>
 	<buildtool_depend>rosidl_default_generators</buildtool_depend>
 
-	<build_depend>geometry_msgs</build_depend>
-
-	<exec_depend>geometry_msgs</exec_depend>
 	<exec_depend>rosidl_default_runtime</exec_depend>
 
 	<member_of_group>rosidl_interface_packages</member_of_group>

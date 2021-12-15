@@ -1,8 +1,0 @@
-[<vehicleplatform>teensy|
-Connects to the Teensy board
-via rosserial_python.
-]
-[<state> /eStop|std_msgs/Bool]->[teensy]
-[<state> /drive_pwm|teensy/drive_values]->[teensy]
-[teensy]-:>[Teensy board]
-[teensy]->[<state> /pwm_high|teensy/pwm_high]

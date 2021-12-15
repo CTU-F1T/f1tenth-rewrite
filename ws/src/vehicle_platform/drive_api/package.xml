@@ -14,7 +14,7 @@
 	<exec_depend>rclpy</exec_depend>
 
 	<exec_depend>std_msgs</exec_depend>
-	<exec_depend>teensy</exec_depend>
+	<exec_depend>teensy_drive_msgs</exec_depend>
 	<exec_depend>geometry_msgs</exec_depend>
 	<exec_depend>command_msgs</exec_depend>
 

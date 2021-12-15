@@ -72,7 +72,7 @@ except ImportError:
     print('Unable to find Command* messages. Subscriber will be disabled.', file=sys.stderr)
     USE_COMMANDS = False
 
-from teensy.msg import DriveValues
+from teensy_drive_msgs.msg import DriveValues
 
 try:
     from drive_api_msgs.msg import DriveApiValues

@@ -54,6 +54,8 @@ class RideNode(Node):
         # TODO 3: Did we use rqt_reconfigure (https://github.com/ros-visualization/rqt_reconfigure)?
         #   If we did, we might need to investigate rqt_reconfigure ROS 2 port state
         #   (it was ported to ROS 2 Dashing, see https://github.com/ros-visualization/rqt_reconfigure/issues)
+        self.acceleration: float = math.nan
+        self.decceleration: float = math.nan
         self.VP_SPEED_MIN: float = math.nan
         self.VP_SPEED_MAX: float = math.nan
         self.VP_SPEED_AVOID: float = math.nan
@@ -69,6 +71,9 @@ class RideNode(Node):
         self.ANGLE_HYSTER_A: float = math.nan
         # param name -> self[name] or self[name] and mapper function
         self.config_map: Dict[str, Union[str, Tuple[str, Callable[[Any], Any]]]] = {
+
+            'acceleration': 'acceleration',
+            'decceleration': 'decceleration',
 
             'speed_min': 'VP_SPEED_MIN',
             'speed_max': 'VP_SPEED_MAX',
@@ -104,32 +109,49 @@ class RideNode(Node):
         # TODO: document mode values meaning and use meaningfully named constants for them
         self.mode = 0
         self.current_angle = self.VP_TURN_MAX_L
-        self.current_drive = self.VP_SPEED_MAX
+        self.current_drive = 0
+        self.last_timestamp = math.nan
+        self.get_logger().info(f'last_timestamp = {self.last_timestamp}')
         # TODO: What is FILTER_ALPHA supposed to do?
         self.FILTER_ALPHA = 0.00
 
         # publishers
-        self.pwm_pub = self.create_publisher(msg_type=DriveApiValues, topic='/drive_api/command', qos_profile=10)
+        self.pwm_pub = self.create_publisher(
+            msg_type=DriveApiValues, topic='/drive_api/command', qos_profile=10)
 
         # publishers for car constants (instead of CarControlData.msg)
-        self.ltm_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/minF', qos_profile=1)
-        self.lta_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/maxF', qos_profile=1)
-        self.ltv_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/left/avoidF', qos_profile=1)
+        self.ltm_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/left/minF', qos_profile=1)
+        self.lta_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/left/maxF', qos_profile=1)
+        self.ltv_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/left/avoidF', qos_profile=1)
 
-        self.rtm_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/right/minF', qos_profile=1)
-        self.rta_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/right/maxF', qos_profile=1)
-        self.rtv_pub = self.create_publisher(msg_type=Float64, topic='ftg/turn/right/avoidF', qos_profile=1)
+        self.rtm_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/right/minF', qos_profile=1)
+        self.rta_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/right/maxF', qos_profile=1)
+        self.rtv_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/turn/right/avoidF', qos_profile=1)
 
-        self.fsm_pub = self.create_publisher(msg_type=Float64, topic='ftg/speed/minF', qos_profile=1)
-        self.fsa_pub = self.create_publisher(msg_type=Float64, topic='ftg/speed/maxF', qos_profile=1)
-        self.fsv_pub = self.create_publisher(msg_type=Float64, topic='ftg/speed/avoidF', qos_profile=1)
+        self.fsm_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/speed/minF', qos_profile=1)
+        self.fsa_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/speed/maxF', qos_profile=1)
+        self.fsv_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/speed/avoidF', qos_profile=1)
 
-        self.fas_pub = self.create_publisher(msg_type=Float64, topic='ftg/angle/switch', qos_profile=1)
-        self.fah_pub = self.create_publisher(msg_type=Float64, topic='ftg/angle/hyster', qos_profile=1)
-        self.fvs_pub = self.create_publisher(msg_type=Float64, topic='ftg/angle/switch_a', qos_profile=1)
-        self.fvh_pub = self.create_publisher(msg_type=Float64, topic='ftg/angle/hyster_a', qos_profile=1)
+        self.fas_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/angle/switch', qos_profile=1)
+        self.fah_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/angle/hyster', qos_profile=1)
+        self.fvs_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/angle/switch_a', qos_profile=1)
+        self.fvh_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/angle/hyster_a', qos_profile=1)
 
-        self.fal_pub = self.create_publisher(msg_type=Float64, topic='ftg/filter/alpha', qos_profile=1)
+        self.fal_pub = self.create_publisher(
+            msg_type=Float64, topic='ftg/filter/alpha', qos_profile=1)
 
         # subscriptions
         self.angle_subscription = self.create_subscription(
@@ -158,6 +180,9 @@ class RideNode(Node):
         # [name, description, default_value, from_value, to_value]
         params_simplified: List[Tuple[str, str, Any, Any, Any]] = [
 
+            ('acceleration', 'Acceleration', 0.2, 0.01, 1.0),
+            ('decceleration', 'Decceleration', 0.2, 0.01, 1.0),
+
             # PWM duty for speed (lesser number ~ faster)
             #   current meaning: AVOID is used during sharp turns,
             #                    MIN is used during other turns,
@@ -167,9 +192,9 @@ class RideNode(Node):
             # self.VP_SPEED_AVOID = 0.098602794  # ~ 9200
             # note: speed_min (Level-2 speed) and speed_max (Level-1 speed)
             #       descriptions are NOT swapped. The naming has a historical reason.
-            ('speed_min', 'Level-2 speed', 0.138522954, 0.0, 0.3),
-            ('speed_max', 'Level-1 speed', 0.158483034, 0.0, 0.3),
-            ('speed_avoid', 'Level-3 speed', 0.098602794, 0.0, 0.3),
+            ('speed_min', 'Level-2 speed', 0.05, 0.0, 0.3),
+            ('speed_max', 'Level-1 speed', 0.05, 0.0, 0.3),
+            ('speed_avoid', 'Level-3 speed', 0.05, 0.0, 0.3),
 
             # PWM duty for turning
             # TODO: Why the values in VP_* are NEGATIVE but parameters are POSITIVE?
@@ -216,7 +241,7 @@ class RideNode(Node):
                     )
                 )
                 for name, desc, value, from_value, to_value in params_simplified
-            ]
+        ]
 
         self.declare_parameters(
             namespace='',
@@ -228,12 +253,15 @@ class RideNode(Node):
     def assert_all_constants_set(self):
 
         for param_handler in self.config_map.values():
-            assert (isinstance(param_handler, str) or isinstance(param_handler, tuple))
-            attr_name = param_handler if isinstance(param_handler, str) else param_handler[0]
+            assert (isinstance(param_handler, str)
+                    or isinstance(param_handler, tuple))
+            attr_name = param_handler if isinstance(
+                param_handler, str) else param_handler[0]
             assert isinstance(attr_name, str)
             assert hasattr(self, attr_name)
             attr_value = getattr(self, attr_name)
-            assert (isinstance(attr_value, float) and not math.isnan(attr_value))
+            assert (isinstance(attr_value, float)
+                    and not math.isnan(attr_value))
             pass
 
         pass
@@ -270,7 +298,8 @@ class RideNode(Node):
         if abs(angle.data) < (self.ANGLE_SWITCH - self.ANGLE_HYSTER):
             self.mode = 0
         elif (
-            (self.ANGLE_SWITCH + self.ANGLE_HYSTER) < abs(angle.data) < (self.ANGLE_SWITCH_A - self.ANGLE_HYSTER_A)
+            (self.ANGLE_SWITCH + self.ANGLE_HYSTER) < abs(
+                angle.data) < (self.ANGLE_SWITCH_A - self.ANGLE_HYSTER_A)
         ):
             self.mode = 1
         elif abs(angle.data) > (self.ANGLE_SWITCH_A + self.ANGLE_HYSTER_A):
@@ -278,17 +307,20 @@ class RideNode(Node):
 
         # Go straight forward (high speed, low steering)
         if self.mode == 0:
-            pwm_angle = (self.VP_TURN_MIN_L if angle.data < 0 else self.VP_TURN_MIN_R) * angle.data
+            pwm_angle = (self.VP_TURN_MIN_L if angle.data <
+                         0 else self.VP_TURN_MIN_R) * angle.data
             pwm_drive = self.VP_SPEED_MAX
 
         # Slow down before turning (low speed, high steering)
         elif self.mode == 1:
-            pwm_angle = (self.VP_TURN_MAX_L if angle.data < 0 else self.VP_TURN_MAX_R) * angle.data
+            pwm_angle = (self.VP_TURN_MAX_L if angle.data <
+                         0 else self.VP_TURN_MAX_R) * angle.data
             pwm_drive = self.VP_SPEED_MIN
 
         # Slow down (a lot) before sharp turn (really low speed, really high steering)
         else:
-            pwm_angle = (self.VP_TURN_AVOID_L if angle.data < 0 else self.VP_TURN_AVOID_R) * angle.data
+            pwm_angle = (self.VP_TURN_AVOID_L if angle.data <
+                         0 else self.VP_TURN_AVOID_R) * angle.data
             pwm_drive = self.VP_SPEED_AVOID
 
         # TODO: add note why this is commented out
@@ -296,8 +328,26 @@ class RideNode(Node):
         # dv_msg.pwm_drive = current_drive * (1 - FILTER_ALPHA) + pwm_drive * (FILTER_ALPHA)
         # current_drive =  current_drive * (1 - FILTER_ALPHA) + pwm_drive * (FILTER_ALPHA)
 
-        dv_msg.velocity = pwm_drive
+        now = self.get_clock().now().nanoseconds
+        time_diff = (now - self.last_timestamp) * 1e-9
+        if math.isnan(time_diff):
+            time_diff = 0
+        self.last_timestamp = now
+
+        if pwm_drive > self.current_drive:
+            self.current_drive = min(pwm_drive, self.current_drive + self.acceleration * time_diff)
+        else:
+            # pwm_drive <= self.current_drive
+            self.current_drive = max(pwm_drive, self.current_drive - self.decceleration * time_diff)
+
+        dv_msg.velocity = self.current_drive
         dv_msg.forward = True
+        #self.get_logger().info(
+        #    f'last_timestamp = {self.last_timestamp}, diff = {time_diff}, v0 = {pwm_drive}, v = {self.current_drive}'
+        #)
+        #self.get_logger().info(
+        #    f'v0 = {pwm_drive}, v = {self.current_drive}, diff = {time_diff}, a = {self.acceleration}'
+        #)
 
         if pwm_angle < 0:
             dv_msg.steering = -pwm_angle
@@ -397,7 +447,8 @@ class RideNode(Node):
                     reason=f'param \'{param.name}\' not in config_map'
                 )
 
-            param_handler: Union[str, Tuple[str, Callable[[Any], Any]]] = self.config_map[param.name]
+            param_handler: Union[str, Tuple[str, Callable[[
+                Any], Any]]] = self.config_map[param.name]
 
             if isinstance(param_handler, str):
                 setattr(self, param_handler, param.value)

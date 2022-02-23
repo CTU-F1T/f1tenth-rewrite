@@ -23,20 +23,20 @@ define floorplan model
 # set the resolution of the underlying raytrace model in meters
 resolution 0.035
 
-interval_sim 100  # simulation timestep in milliseconds
-
+interval_sim 100
+threads 2
 
 window
-( 
-    size [ 745.000 448.000 ] 
+(
+    size [ 745.000 448.000 ]
 
     rotate [ 0.000 -1.560 ]
-    scale 28.806 
+    scale 28.806
 )
 
 # load an environment bitmap
 floorplan
-( 
+(
     name "test_track"
     bitmap "test_track.pgm"
     size [20.0 20.0 0.5]

@@ -48,3 +48,6 @@ __pycache__
 # original ROS 1 f1tenth
 /ws/original/
 /original/
+
+# Google Cartograhper SLAM state data (maps)
+*.pbstream

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<!--
+  Author: Jaroslav Klapálek <klapajar@fel.cvut.cz>
+  Description: Launch Cartographer SLAM in mapping / localization mode.
+-->
+<launch>
+  <arg name="mode" doc="Mode for launching Cartographer SLAM; 'mapping' or 'localization'. Specifies the name of the launch file." />
+
+  <include file="$(find cartographer_slam)/launch/$(arg mode).launch" />
+</launch>

@@ -1,0 +1,7 @@
+[<recognition>cartographer_slam|
+Runs Cartographer SLAM.
+*(various topics hidden)
+]
+[<state> /scan|sensor_msgs/LaserScan]->[cartographer_slam]
+[<state> /imu|sensor_msgs/Imu]->[cartographer_slam]
+[cartographer_slam]->[<state> /map|nav_msgs/OccupancyGrid]

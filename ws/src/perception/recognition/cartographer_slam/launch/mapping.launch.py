@@ -53,6 +53,7 @@ def generate_launch_description():
             # see https://google-cartographer-ros.readthedocs.io/en/latest/ros_api.html
             # ('echoes', 'horizontal_laser_2d'),
             ('scan', '/scan'),
+            ('odom', '/stage_ros2/car/odom'),
             # ('/imu', 'xxx'),
         ],
     )

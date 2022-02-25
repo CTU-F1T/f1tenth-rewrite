@@ -6,9 +6,17 @@ set -e
 
 # see also https://google-cartographer-ros.readthedocs.io/en/latest/assets_writer.html
 
-if [[ -z $1 ]]; then
+# $1 is this subcommand name (i.e., save_slam)
+filename="$2"
+
+if [[ -z $filename ]]; then
 	echo "Please enter name as the first argument."
 	exit 1
+fi
+
+# automtically add the correct ext
+if [[ ! $filename =~ \.pbstream$ ]]; then
+	filename="$filename.pbstream"
 fi
 
 ros2 service call /cartographer/finish_trajectory \
@@ -17,4 +25,4 @@ ros2 service call /cartographer/finish_trajectory \
 
 ros2 service call /cartographer/write_state \
 	cartographer_ros_msgs/srv/WriteState \
-	"{filename: \"$1.pbstream\"}"
+	"{filename: \"$filename\"}"

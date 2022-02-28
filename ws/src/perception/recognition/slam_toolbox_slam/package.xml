@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>cartographer_slam</name>
-  <version>0.0.3</version>
+  <name>slam_toolbox_slam</name>
+  <version>0.0.1</version>
   <description>
-    This package is used to integrate the cartographer_ros package
+    This package is used to integrate the slam_toolbox package
     with our platform.
   </description>
   <maintainer email="endlemar@fel.cvut.cz">Martin Endler</maintainer>
@@ -12,7 +12,7 @@
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 
-  <exec_depend>cartographer_ros</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -59,7 +59,7 @@ def generate_launch_description():
     )
 
     occupancy_grid_node = Node(
-        executable='occupancy_grid_node',
+        executable='cartographer_occupancy_grid_node',
         name='occupancy_grid_node',
         namespace='cartographer',
         package='cartographer_ros',

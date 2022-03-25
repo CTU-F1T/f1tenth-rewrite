@@ -81,7 +81,7 @@ def generate_launch_description():
             # x y z qx qy qz qw
             '0', '0', '0', '0', '0', '0',
             # frame_id child_frame_id
-            'laser', 'car/ranger_0/base_scan',
+            'car/ranger_0/base_scan', 'laser',
         ],
     )
 
@@ -121,7 +121,7 @@ def generate_launch_description():
             {
                 'run_mode': 'simulation',
                 'simulation.steering_modifier': 0.7,
-                'simulation.throttle_modifier': 7.26,
+                'simulation.throttle_modifier': 15.00,
             },
             {
                 'use_sim_time': True,
@@ -163,5 +163,6 @@ def generate_launch_description():
         obstacle_substitution_node,
         follow_the_gap_v0_ride_launch,
         drive_api_node,
-
+        # urdf_publisher,
+        # tf_stage_laser,
     ])

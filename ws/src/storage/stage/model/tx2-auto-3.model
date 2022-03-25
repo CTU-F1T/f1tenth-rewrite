@@ -10,10 +10,12 @@ include "../apriltags/atag2.model"
 include "../apriltags/atag3.model"
 # Stage simulator model of apriltag ID #0, #1, #2, #3
 
+# https://player-stage-manual.readthedocs.io/en/stable/WORLDFILES/#32-building-a-robot
+
 # Sensors (lidar)
 define ust10lx ranger
 (
-    sensor( 			
+    sensor(
         range [ 0.0  10.0 ]
         fov 270.0
         samples 3243

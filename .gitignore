@@ -51,3 +51,10 @@ __pycache__
 
 # Google Cartograhper SLAM state data (maps)
 *.pbstream
+
+# external repos (with ROS 2 packages)
+/ws/src/external/
+/ws/src/vehicle_platform/vesc/
+/ws/src/perception/sensors/ros2_razor_imu/
+/ws/src/simulation/stage/
+/ws/src/simulation/stage_ros2/

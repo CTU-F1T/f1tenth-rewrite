@@ -28,9 +28,9 @@ Desktop.ini
 ### PROJECT
 
 # colcon workspace
-/ws/log/
-/ws/install/
-/ws/build/
+/log/
+/install/
+/build/
 
 # symlink to ws/build/compile_commands.json for easily opening the project
 # in CLion as "Compilation Database Project"
@@ -46,15 +46,14 @@ __pycache__
 *.swp
 
 # original ROS 1 f1tenth
-/ws/original/
 /original/
 
 # Google Cartograhper SLAM state data (maps)
 *.pbstream
 
 # external repos (with ROS 2 packages)
-/ws/src/external/
-/ws/src/vehicle_platform/vesc/
-/ws/src/perception/sensors/ros2_razor_imu/
-/ws/src/simulation/stage/
-/ws/src/simulation/stage_ros2/
+/src/external/
+/src/vehicle_platform/vesc/
+/src/perception/sensors/ros2_razor_imu/
+/src/simulation/stage/
+/src/simulation/stage_ros2/

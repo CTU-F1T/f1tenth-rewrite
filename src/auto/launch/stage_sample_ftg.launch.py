@@ -10,7 +10,7 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-def get_shared_file(package_name: str, *path: List[str]) -> str:
+def get_shared_file(package_name: str, *path: SomeSubstitutionsType) -> str:
     """Return the path to the given shared file."""
     return os.path.join(
         get_package_share_directory(package_name),
@@ -18,7 +18,7 @@ def get_shared_file(package_name: str, *path: List[str]) -> str:
     )
 
 
-def get_shared_file_substitution(package_name: str, *path: List[str]) -> SomeSubstitutionsType:
+def get_shared_file_substitution(package_name: str, *path: SomeSubstitutionsType) -> SomeSubstitutionsType:
     """Return a Substitution that resolves to the path to the given shared file."""
     return PathJoinSubstitution([
         FindPackageShare(package=package_name),
@@ -27,7 +27,6 @@ def get_shared_file_substitution(package_name: str, *path: List[str]) -> SomeSub
 
 
 def generate_launch_description():
-
     stage_launch = IncludeLaunchDescription(
         launch_description_source=PythonLaunchDescriptionSource(
             launch_file_path=PathJoinSubstitution([

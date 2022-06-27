@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
 
-def get_shared_file_substitution(package_name: str, *path: List[str]) -> SomeSubstitutionsType:
+def get_shared_file_substitution(package_name: str, *path: SomeSubstitutionsType) -> SomeSubstitutionsType:
     """Return a Substitution that resolves to the path to the given shared file."""
     return PathJoinSubstitution([
         FindPackageShare(package=package_name),
@@ -16,7 +16,6 @@ def get_shared_file_substitution(package_name: str, *path: List[str]) -> SomeSub
 
 
 def generate_launch_description():
-
     simulator_node = Node(
         package='stage_ros2',
         executable='stage_ros2',
@@ -39,7 +38,10 @@ def generate_launch_description():
 
         DeclareLaunchArgument(
             name='world',
-            description='World file name (incl. ext). Can be a relative path (with respect to storage/stage/world) or an absolute path.',
+            description=(
+                'World file name (incl. ext).'
+                'Can be a relative path (with respect to storage/stage/world) or an absolute path.'
+            ),
         ),
 
         SetLaunchConfiguration(

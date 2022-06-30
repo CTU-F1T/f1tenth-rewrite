@@ -88,7 +88,6 @@ _ws/src/:_
     * **f1tenth_race** (IDL)
     * **obstacle_msgs** (IDL)
     * **plan_msgs** (IDL)
-    * **trajectory** (IDL)
     * **vesc_msgs** (IDL)
 * _perception/_
     * _recognition/_

@@ -26,6 +26,7 @@ def generate_launch_description():
         parameters=[
             {
                 'world': LaunchConfiguration(variable_name='world'),
+                'gui': LaunchConfiguration(variable_name='gui'),
             },
         ],
         remappings=[
@@ -40,8 +41,14 @@ def generate_launch_description():
             name='world',
             description=(
                 'World file name (incl. ext).'
-                'Can be a relative path (with respect to storage/stage/world) or an absolute path.'
+                ' Can be a relative path (with respect to storage/stage/world) or an absolute path.'
             ),
+        ),
+
+        DeclareLaunchArgument(
+            name='gui',
+            description='Enable GUI.',
+            default_value='true',
         ),
 
         SetLaunchConfiguration(

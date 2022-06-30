@@ -15,5 +15,5 @@ repositories:
     version: master
   src/simulation/stage_ros2:
     type: git
-    url: https://github.com/ymd-stella/stage_ros2.git
+    url: git@github.com:pokusew/stage_ros2.git
     version: master

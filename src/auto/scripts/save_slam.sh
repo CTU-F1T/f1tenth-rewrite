@@ -14,7 +14,7 @@ if [[ -z $filename ]]; then
 	exit 1
 fi
 
-# automtically add the correct ext
+# automatically add the correct ext
 if [[ ! $filename =~ \.pbstream$ ]]; then
 	filename="$filename.pbstream"
 fi

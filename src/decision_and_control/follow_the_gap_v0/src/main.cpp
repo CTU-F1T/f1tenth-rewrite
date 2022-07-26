@@ -348,11 +348,11 @@ int main(int argc, char **argv) {
 
 	// Subscriptions
 
-	auto subscription_lidar_data = node->create_subscription<sensor_msgs::msg::LaserScan>(
-		"/scan",
-		kSubscribeMessageBufferSize,
-		Callback
-	);
+	// auto subscription_lidar_data = node->create_subscription<sensor_msgs::msg::LaserScan>(
+	// 	"/scan",
+	// 	kSubscribeMessageBufferSize,
+	// 	Callback
+	// );
 
 	auto subscription_obstacle_data = node->create_subscription<obstacle_msgs::msg::ObstaclesStamped>(
 		"/obstacles",

@@ -120,8 +120,11 @@ sudo apt install libfltk1.1-dev libglu1-mesa-dev
 #   For --mixin flag to work, you need colcon-mixin extension.
 #   See https://github.com/pokusew/ros-setup/blob/main/ROS2-Tips.md#colcon for installation instructions.
 #   Alternatively, you can use the variant without --mixin flag below.
-colcon build --symlink-install --mixin compile-commands
-colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli
+# Note 2:
+#   vesc_ackermann's build is failing (uses now-removed deprecated ROS 2 APIs) on rolling (and possibly humble).
+#   Because we do not use it now, we can afford to skip is build for now.
+colcon build --symlink-install --mixin compile-commands --packages-ignore vesc_ackermann
+colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli --packages-ignore vesc_ackermann
 ```
 
 

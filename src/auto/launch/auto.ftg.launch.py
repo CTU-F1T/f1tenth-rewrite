@@ -51,8 +51,8 @@ def generate_launch_description():
         launch.actions.IncludeLaunchDescription(
             launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
                 launch_file_path=launch.substitutions.PathJoinSubstitution([
-                    launch_ros.substitutions.FindPackageShare(package='ust10lx'),
-                    'start.launch.py'
+                    launch_ros.substitutions.FindPackageShare(package='auto'),
+                    'ust10lx.launch.py'
                 ]),
             ),
             launch_arguments=[],

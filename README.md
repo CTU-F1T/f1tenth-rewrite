@@ -113,7 +113,8 @@ vcs import --input stack.repos --force
 #   and might not be available on all platforms for an easy install using apt.
 rosdep install -i --from-paths src -y --skip-keys="Stage slam_toolbox cartographer_ros"
 # Install Stage's dependencies manually because Stage is not a ROS package (no package.xml so rosdep cannot work).
-# sudo apt install TODO
+# Stage also requires libpng-dev and libjpeg-dev but those are normally already installed.
+sudo apt install libfltk1.1-dev libglu1-mesa-dev
 # Build the workspace.
 # Note:
 #   For --mixin flag to work, you need colcon-mixin extension.

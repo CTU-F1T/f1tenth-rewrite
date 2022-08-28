@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+export AUTO_CLI_HOME="@AUTO_CLI_HOME@"
+export AUTO_CLI_VERSION="@AUTO_CLI_VERSION@"
+
+if [[ -z $AUTO_CLI_HOME ]]; then
+	echo "AUTO_CLI_HOME env var must be set and not empty!"
+	exit 1
+fi
+
+"$AUTO_CLI_HOME/auto.sh" "$@"

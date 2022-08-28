@@ -1,0 +1,8 @@
+__auto_cli_complete() {
+	local auto_cli_home="@AUTO_CLI_HOME@"
+	local auto_cli_version="@AUTO_CLI_VERSION@"
+	# TODO
+}
+
+# register __auto_cli_complete as autocomplete function for auto command
+complete -F __auto_cli_complete auto

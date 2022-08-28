@@ -8,7 +8,6 @@ repositories:
     url: git@github.com:pokusew/ros2_razor_imu.git
     version: ros2
   # Stage simulator and bindings for ROS 2
-  # NOTE: use make ./patches/patch-stage.sh (after make clone-stage) to patch the build configs in stage and stage_ros2
   src/simulation/stage:
     type: git
     url: https://github.com/rtv/Stage.git

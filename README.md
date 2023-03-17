@@ -105,15 +105,19 @@ to [always use a different terminal for building the workspace][ros2-tips-colcon
 # Note: Change the path to your ROS 2 distro accordingly.
 source /opt/ros/humble/setup.bash
 # Clone external packages' sources using vcstool.
-vcs import --input stack.repos --force
+# 1) if you are running code on the car:
+vcs import --input stack.auto.repos --force
+# 1) if you are running code on you computer (e.g. with Stage simulator)
+vcs import --input stack.sim.repos --force
 # Install any required dependencies using rosdep.
 # We have to explicitly ignore
 # - Stage because rosdep cannot detect pure CMake packages.
 # - slam_toolbox and cartographer_ros because they are not needed for the FTG app
 #   and might not be available on all platforms for an easy install using apt.
 rosdep install -i --from-paths src -y --skip-keys="Stage slam_toolbox cartographer_ros"
-# Install Stage's dependencies manually because Stage is not a ROS package (no package.xml so rosdep cannot work).
-# Stage also requires libpng-dev and libjpeg-dev but those are normally already installed.
+# Only if are running code on you computer and you need the Stage simulator:
+#   Install Stage's dependencies manually because Stage is not a ROS package (no package.xml so rosdep cannot work).
+#   Stage also requires libpng-dev and libjpeg-dev but those are normally already installed.
 sudo apt install libfltk1.1-dev libglu1-mesa-dev
 # Build the workspace.
 # Note:
@@ -189,7 +193,7 @@ _src/:_
 	* _sensors/_
 		* **ros2_razor_imu** _(Pure Python)_ – ROS 2 driver for 9DoF Razor IMU
 		  M0 ([external](https://github.com/pokusew/ros2_razor_imu), currently not cloned,
-		  see [stack.repos](./stack.repos)).
+		  see [stack.sim.repos](./stack.sim.repos) and [stack.auto.repos](./stack.auto.repos)).
 * _simulation/_
 	* **stage** _(Pure CMake)_ – Stage simulator (C++) ([external](https://github.com/rtv/Stage)).
 	* **stage_ros2** _(Ament CMake)_ – ROS 2 bindings (C++) for the Stage

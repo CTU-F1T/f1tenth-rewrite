@@ -1,4 +1,6 @@
+# external repositories that are needed when running in simulation
 repositories:
+  # the vesc_driver package is not needed, however some other vesc packages are needed (vesc_msgs, ...)
   src/vehicle_platform/vesc:
     type: git
     url: git@github.com:pokusew/vesc.git

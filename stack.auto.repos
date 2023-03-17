@@ -1,0 +1,11 @@
+# external repositories that are needed when running on the car
+repositories:
+  src/vehicle_platform/vesc:
+    type: git
+    url: git@github.com:pokusew/vesc.git
+    version: ros2-pokusew
+  # TODO: enable once needed
+  # src/perception/sensors/ros2_razor_imu:
+  #   type: git
+  #   url: git@github.com:pokusew/ros2_razor_imu.git
+  #   version: ros2

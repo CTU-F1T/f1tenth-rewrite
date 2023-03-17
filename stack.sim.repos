@@ -3,12 +3,12 @@ repositories:
   # the vesc_driver package is not needed, however some other vesc packages are needed (vesc_msgs, ...)
   src/vehicle_platform/vesc:
     type: git
-    url: git@github.com:pokusew/vesc.git
+    url: https://github.com/pokusew/vesc.git
     version: ros2-pokusew
   # TODO: enable once needed
   # src/perception/sensors/ros2_razor_imu:
   #   type: git
-  #   url: git@github.com:pokusew/ros2_razor_imu.git
+  #   url: https://github.com/pokusew/ros2_razor_imu.git
   #   version: ros2
   # Stage simulator and bindings for ROS 2
   src/simulation/stage:
@@ -17,5 +17,5 @@ repositories:
     version: master
   src/simulation/stage_ros2:
     type: git
-    url: git@github.com:pokusew/stage_ros2.git
+    url: https://github.com/pokusew/stage_ros2.git
     version: master

@@ -7,7 +7,7 @@ import launch_ros.actions
 # see https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Launch-system.html
 # see https://github.com/ros2/launch/blob/rolling/launch/doc/source/architecture.rst
 # see https://docs.ros.org/en/rolling/How-To-Guides/Node-arguments.html
-def generate_start_launch_description():
+def generate_launch_description():
     # note: Always use an order collection (e.g. List NOT Set),
     #       because the order here matters!
     return launch.LaunchDescription([

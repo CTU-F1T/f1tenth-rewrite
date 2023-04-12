@@ -155,6 +155,7 @@ class DriveApiNode(Node):
         self.msg = DriveValues()
         self.msg_vesc = Float64()
         self.msg_cmd_vel = Twist()
+        self.msg_servo = Float64()
         self.eStop: bool = True
         self.run_mode: RunMode = RunMode[self.get_parameter('run_mode').value.upper()]
 
@@ -203,6 +204,10 @@ class DriveApiNode(Node):
             callback=self.estop_callback,
             qos_profile=1,
         )
+
+        # Publish servo input for 'vesc_to_odom'
+        # TODO: Probably resolve this in a different way.
+        self.pub_servo = self.create_publisher(msg_type=Float64, topic='sensors/servo_position_command', qos_profile=1)
 
         # fixed rate publish loop
         # TODO: https://answers.ros.org/question/358343/rate-and-sleep-function-in-rclpy-library-for-ros2/
@@ -596,6 +601,7 @@ class DriveApiNode(Node):
         Note: Used only in BASIC mode.
         """
         self.pub.publish(self.msg)
+        self.pub_servo.publish(self.msg_servo)
 
     def publish_with_vesc(self):
         """Publish currently stored variables.
@@ -603,6 +609,7 @@ class DriveApiNode(Node):
         Note: Used only in BASIC_VESC mode.
         """
         self.pub.publish(DriveValues(pwm_drive=self.config['pwm.throttle.calm_value'], pwm_angle=self.msg.pwm_angle))
+        self.pub_servo.publish(self.msg_servo)
         self.pub_vesc.publish(self.msg_vesc)
 
     def publish_sim(self):
@@ -834,6 +841,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + steer * self.config['pwm.steering.left.range']
                 )
+                self.msg_servo = 0.5 - (steer / 2)
                 return True
 
             if direction == SteeringDirection.RIGHT:
@@ -841,6 +849,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.right.min']
                     + steer * self.config['pwm.steering.right.range']
                 )
+                self.msg_servo = (steer / 2) + 0.5
                 return True
 
             return False
@@ -874,6 +883,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + abs(steer) * self.config['pwm.steering.left.range']
                 )
+                self.msg_servo = 0.5 - (abs(steer) / 2)
                 return True
 
             if (
@@ -884,6 +894,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.right.min']
                     + abs(steer) * self.config['pwm.steering.right.range']
                 )
+                self.msg_servo = (abs(steer) / 2) + 0.5
                 return True
 
             return False
@@ -910,6 +921,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + min(abs(steer) / self.config['angular_steering.left_max'], 1.0)
                     * self.config['pwm.steering.left.range'])
+                self.msg_servo = 0.5 - (min(abs(steer) / self.config['angular_steering.left_max'], 1.0) / 2)
                 return True
 
             if (
@@ -921,6 +933,7 @@ class DriveApiNode(Node):
                     + min(abs(steer) / self.config['angular_steering.right_max'], 1.0)
                     * self.config['pwm.steering.right.range']
                 )
+                self.msg_servo = (min(abs(steer) / self.config['angular_steering.right_max'], 1.0) / 2) + 0.5
                 return True
 
             return False
@@ -941,6 +954,7 @@ class DriveApiNode(Node):
         self.get_logger().info(f'reset_steer')
 
         self.msg.pwm_angle = self.config['pwm.steering.calm_value']
+        self.msg_servo = 0.5
         self.msg_cmd_vel.angular.z = 0.0
 
         pass

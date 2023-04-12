@@ -23,6 +23,7 @@ build: ##@Build Build the workspace using proper arguments.
 
 update: ##@Packages Download and update local packages from a remote index.
 	vcs import --input '$(SOURCE)'
+	vcs custom --git ./src --args merge --ff-only
 
 force-update: ##@Packages Force download and update all local packages from a remote index.
 	vcs import --input '$(SOURCE)' --force

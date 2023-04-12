@@ -841,7 +841,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + steer * self.config['pwm.steering.left.range']
                 )
-                self.msg_servo = 0.5 - (steer / 2)
+                self.msg_servo.data = 0.5 - (steer / 2)
                 return True
 
             if direction == SteeringDirection.RIGHT:
@@ -849,7 +849,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.right.min']
                     + steer * self.config['pwm.steering.right.range']
                 )
-                self.msg_servo = (steer / 2) + 0.5
+                self.msg_servo.data = (steer / 2) + 0.5
                 return True
 
             return False
@@ -883,7 +883,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + abs(steer) * self.config['pwm.steering.left.range']
                 )
-                self.msg_servo = 0.5 - (abs(steer) / 2)
+                self.msg_servo.data = 0.5 - (abs(steer) / 2)
                 return True
 
             if (
@@ -894,7 +894,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.right.min']
                     + abs(steer) * self.config['pwm.steering.right.range']
                 )
-                self.msg_servo = (abs(steer) / 2) + 0.5
+                self.msg_servo.data = (abs(steer) / 2) + 0.5
                 return True
 
             return False
@@ -921,7 +921,7 @@ class DriveApiNode(Node):
                     self.config['pwm.steering.left.min']
                     + min(abs(steer) / self.config['angular_steering.left_max'], 1.0)
                     * self.config['pwm.steering.left.range'])
-                self.msg_servo = 0.5 - (min(abs(steer) / self.config['angular_steering.left_max'], 1.0) / 2)
+                self.msg_servo.data = 0.5 - (min(abs(steer) / self.config['angular_steering.left_max'], 1.0) / 2)
                 return True
 
             if (
@@ -933,7 +933,7 @@ class DriveApiNode(Node):
                     + min(abs(steer) / self.config['angular_steering.right_max'], 1.0)
                     * self.config['pwm.steering.right.range']
                 )
-                self.msg_servo = (min(abs(steer) / self.config['angular_steering.right_max'], 1.0) / 2) + 0.5
+                self.msg_servo.data = (min(abs(steer) / self.config['angular_steering.right_max'], 1.0) / 2) + 0.5
                 return True
 
             return False
@@ -954,7 +954,7 @@ class DriveApiNode(Node):
         self.get_logger().info(f'reset_steer')
 
         self.msg.pwm_angle = self.config['pwm.steering.calm_value']
-        self.msg_servo = 0.5
+        self.msg_servo.data = 0.5
         self.msg_cmd_vel.angular.z = 0.0
 
         pass

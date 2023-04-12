@@ -19,7 +19,7 @@ help: ## Show this help message.
 
 
 build: ##@Build Build the workspace using proper arguments.
-	colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli --packages-ignore vesc_ackermann
+	colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli
 
 update: ##@Packages Download and update local packages from a remote index.
 	vcs import --input '$(SOURCE)'

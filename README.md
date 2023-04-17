@@ -27,6 +27,7 @@ _The work in this repository is a part of my [bachelor's thesis][fel-bachelors-t
 	- [Pure Python packages cannot contain messages definitions](#pure-python-packages-cannot-contain-messages-definitions)
 	- [Pure Python packages' assets are not symlinked correctly](#pure-python-packages-assets-are-not-symlinked-correctly)
 	- [Python entrypoints `main()` inconsistencies](#python-entrypoints-main-inconsistencies)
+	- [VESC](#vesc)
 	- [Others](#others)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -106,7 +107,7 @@ to [always use a different terminal for building the workspace][ros2-tips-colcon
 source /opt/ros/humble/setup.bash
 # Clone external packages' sources using vcstool.
 # 1) if you are running code on the car:
-vcs import --input stack.auto.repos --force
+make update
 # 1) if you are running code on you computer (e.g. with Stage simulator)
 vcs import --input stack.sim.repos --force
 # Install any required dependencies using rosdep.
@@ -264,6 +265,26 @@ def main(args=None):
 
 # ... further code
 ```
+
+
+### VESC
+
+Since we are using RC remote to manually control the car and to make it stop (kill switch), you have to use
+alternative VESC FW from our [repository](https://github.com/CTU-F1T/bldc).
+
+After flashing the VESC and running the configuration wizard make sure to set these parameters:
+- APP/General:
+    - Timeout: `10000 ms`
+	  (_At startup it takes some time before VESC is able to handle commands from PPM cable,
+	    this gives the whole setup enough time for all parts to boot._)
+    - Servo output: `false`
+	  (_We are using PPM cable to control the VESC via RC remote._)
+	- Kill switch: `ADC2 Low`
+	  (_ADC2 pin is used to stop the car from Teensy._)
+- APP/PPM:
+    - Safe start: `Disabled`
+	  (_This has to be disabled as otherwise, during ANY error, you have to open up VESC tool
+	    and re-enable PPM to make it work again._)
 
 
 ### Others

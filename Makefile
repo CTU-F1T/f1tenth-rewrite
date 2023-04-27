@@ -22,7 +22,7 @@ build: ##@Build Build the workspace using proper arguments.
 	colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli
 
 update: ##@Packages Download and update local packages from a remote index.
-	vcs import --input '$(SOURCE)'
+	vcs import --input '$(SOURCE)' --skip-existing
 	vcs custom --git ./src --args merge --ff-only
 
 force-update: ##@Packages Force download and update all local packages from a remote index.

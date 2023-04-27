@@ -52,8 +52,10 @@ __pycache__
 *.pbstream
 
 # external repos (with ROS 2 packages)
+/src/auxiliary/
 /src/external/
 /src/messages/
+/src/decision_and_control/ng_trajectory_ros/
 /src/vehicle_platform/teensy_drive/
 /src/vehicle_platform/vesc/
 /src/perception/sensors/ros2_razor_imu/

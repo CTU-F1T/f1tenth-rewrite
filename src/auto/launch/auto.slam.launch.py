@@ -70,4 +70,15 @@ def generate_launch_description():
             ],
         ),
 
+        # vesc_driver
+        launch_ros.actions.Node(
+            package='vesc_driver',
+            executable='vesc_driver_node',
+            output='screen',
+            name='vesc',
+            parameters=[
+                launch.substitutions.LaunchConfiguration(variable_name='config_file')
+            ],
+        ),
+
     ])

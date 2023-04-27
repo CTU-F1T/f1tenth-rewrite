@@ -53,6 +53,8 @@ __pycache__
 
 # external repos (with ROS 2 packages)
 /src/external/
+/src/messages/
+/src/vehicle_platform/teensy_drive/
 /src/vehicle_platform/vesc/
 /src/perception/sensors/ros2_razor_imu/
 /src/simulation/stage/

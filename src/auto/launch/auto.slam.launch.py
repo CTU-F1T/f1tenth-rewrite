@@ -47,4 +47,27 @@ def generate_launch_description():
             launch_arguments=[],
         ),
 
+        # static transformations
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch_ros.substitutions.FindPackageShare(package='auto'),
+                    'launch',
+                    'auto.static_tf.launch.py'
+                ]),
+            ),
+            launch_arguments=[],
+        ),
+
+        # odometry
+        launch_ros.actions.Node(
+            package='vesc_ackermann',
+            executable='vesc_to_odom_node',
+            output='screen',
+            name='vesc_to_odom',
+            parameters=[
+                launch.substitutions.LaunchConfiguration(variable_name='config_file')
+            ],
+        ),
+
     ])

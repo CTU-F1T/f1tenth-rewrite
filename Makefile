@@ -39,6 +39,7 @@ force-update: ##@Packages Force download and update all local packages from a re
 	else\
 		python3 -c "import yaml; print('\\n'.join(yaml.safe_load(open('"$(TMP_DIR)"/index.yaml'))['repositories'].keys()))" > '$(TMP_DIR)/repos.list';\
 	fi;
+	@echo "." >> '$(TMP_DIR)/repos.list'
 	@echo -n "Changing push URLs"
 	@cat '$(TMP_DIR)/repos.list' | { while read line; do\
 		cd "$$line"; \

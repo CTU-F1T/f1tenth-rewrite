@@ -25,7 +25,25 @@ build: ##@Build Build the workspace using proper arguments.
 	@$(RM) -r '$(TMP_DIR)'
 
 update: ##@Packages Download and update local packages from a remote index.
-	vcs import --input '$(SOURCE)' --skip-existing
+	@echo "Downloading index..."
+	@wget -q '$(SOURCE)' -O '$(TMP_DIR)/index.yaml'
+	@if which python; then\
+		python -c "import yaml; print('\\n'.join(yaml.safe_load(open('"$(TMP_DIR)"/index.yaml'))['repositories'].keys()))" > '$(TMP_DIR)/repos.list';\
+	else\
+		python3 -c "import yaml; print('\\n'.join(yaml.safe_load(open('"$(TMP_DIR)"/index.yaml'))['repositories'].keys()))" > '$(TMP_DIR)/repos.list';\
+	fi;
+	@cat '$(TMP_DIR)/repos.list' | { while read line; do\
+		test -d "$$line" || echo "$$line" >> '$(TMP_DIR)/new_repos.list';\
+	done }
+	@echo -n "Importing repositories"
+	@vcs import --input '$(SOURCE)' --skip-existing
+	@cat '$(TMP_DIR)/new_repos.list' 2>/dev/null | { while read line; do \
+		cd "$$line"; \
+		echo -n "."; \
+		git remote get-url --push origin | sed "s|https://|ssh://git@|g" | xargs git remote set-url --push origin; \
+		cd - > /dev/null; \
+	done }
+	@$(RM) '$(TMP_DIR)/index.yaml' '$(TMP_DIR)/repos.list' '$(TMP_DIR)/new_repos.list'
 	vcs custom --git ./src --args merge --ff-only
 	@$(RM) -r '$(TMP_DIR)'
 

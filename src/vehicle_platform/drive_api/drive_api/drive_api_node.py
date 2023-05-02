@@ -159,6 +159,10 @@ class DriveApiNode(Node):
         self.eStop: bool = True
         self.run_mode: RunMode = RunMode[self.get_parameter('run_mode').value.upper()]
 
+        # set calm state
+        self.stop()
+        self.reset_steer()
+
         # publishers
         self.pub = None  # self.create_publisher(msg_type=DriveValues, topic='drive_pwm', qos_profile=1)
         self.pub_vesc = None  # self.create_publisher(msg_type=Float64, topic='commands/motor/speed', qos_profile=1)

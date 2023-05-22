@@ -24,6 +24,10 @@ build: ##@Build Build the workspace using proper arguments.
 	colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON --no-warn-unused-cli
 	@$(RM) -r '$(TMP_DIR)'
 
+debug: ##@Build Build the workspace with additional data for debugger.
+	colcon build --symlink-install --cmake-args -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo --no-warn-unused-cli
+	@$(RM) -r '$(TMP_DIR)'
+
 update: ##@Packages Download and update local packages from a remote index.
 	@echo "Downloading index..."
 	@wget -q '$(SOURCE)' -O '$(TMP_DIR)/index.yaml'

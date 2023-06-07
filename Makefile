@@ -35,7 +35,7 @@ debug: ##@Build Build the workspace with additional data for debugger.
 update: ##@Packages Download and update local packages from a remote index.
 	@echo "Downloading index..."
 	@wget -q '$(SOURCE)' -O '$(TMP_DIR)/index.yaml'
-	@if which python; then\
+	@if which python > /dev/null; then\
 		python -c "import yaml; print('\\n'.join(yaml.safe_load(open('"$(TMP_DIR)"/index.yaml'))['repositories'].keys()))" > '$(TMP_DIR)/repos.list';\
 	else\
 		python3 -c "import yaml; print('\\n'.join(yaml.safe_load(open('"$(TMP_DIR)"/index.yaml'))['repositories'].keys()))" > '$(TMP_DIR)/repos.list';\

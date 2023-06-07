@@ -8,6 +8,10 @@
 # https://gist.github.com/prwhite/8168133#gistcomment-1737630
 SOURCE=https://raw.githubusercontent.com/CTU-F1T/index.repos/master/index.yaml
 TMP_DIR:=$(shell mktemp -d)
+# Ignore warnings caused by colcon invoking directly setup.py
+# https://github.com/colcon/colcon-core/issues/454#issuecomment-1142649390
+PYTHONWARNINGS=ignore:::setuptools.command.install,ignore:::setuptools.command.easy_install,ignore:::pkg_resources
+export PYTHONWARNINGS
 
 .PHONY: build update force-update
 

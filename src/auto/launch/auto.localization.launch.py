@@ -25,17 +25,6 @@ def generate_launch_description():
             msg=['using config file = ', launch.substitutions.LaunchConfiguration(variable_name='config_file')],
         ),
 
-        # # obstacle_substitution
-        # launch.actions.IncludeLaunchDescription(
-        #     launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
-        #         launch_file_path=launch.substitutions.PathJoinSubstitution([
-        #             launch_ros.substitutions.FindPackageShare(package='obstacle_substitution'),
-        #             'start.launch.py'
-        #         ]),
-        #     ),
-        #     launch_arguments=[],
-        # ),
-
         # lidar
         launch.actions.IncludeLaunchDescription(
             launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
@@ -48,42 +37,42 @@ def generate_launch_description():
             launch_arguments=[],
         ),
 
-        # slam_toolbox
+        # particle filter
         launch.actions.IncludeLaunchDescription(
             launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
                 launch_file_path=launch.substitutions.PathJoinSubstitution([
-                    launch_ros.substitutions.FindPackageShare(package='slam_toolbox_slam'),
+                    launch_ros.substitutions.FindPackageShare(package='particle_filter'),
                     'launch',
-                    'mapping.launch.py',
+                    'localize_launch.py',
                 ]),
             ),
             launch_arguments=[],
         ),
 
         # static transformations
-        launch.actions.IncludeLaunchDescription(
-            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
-                launch_file_path=launch.substitutions.PathJoinSubstitution([
-                    launch_ros.substitutions.FindPackageShare(package='auto'),
-                    'launch',
-                    'auto.static_tf.launch.py',
-                ]),
-            ),
-            launch_arguments=[],
-        ),
+        # launch.actions.IncludeLaunchDescription(
+        #     launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+        #         launch_file_path=launch.substitutions.PathJoinSubstitution([
+        #             launch_ros.substitutions.FindPackageShare(package='auto'),
+        #             'launch',
+        #             'auto.static_tf.launch.py',
+        #         ]),
+        #     ),
+        #     launch_arguments=[],
+        # ),
 
-        launch_ros.actions.Node(
-            executable='static_transform_publisher',
-            name='tf_laser',
-            package='tf2_ros',
-            # output='screen',
-            arguments=[
-                # x y z qx qy qz qw
-                '0', '0', '0', '0', '0', '0',
-                # frame_id child_frame_id
-                'horizontal_laser_link', 'laser',
-            ],
-        ),
+        # launch_ros.actions.Node(
+        #     executable='static_transform_publisher',
+        #     name='tf_laser',
+        #     package='tf2_ros',
+        #     # output='screen',
+        #     arguments=[
+        #         # x y z qx qy qz qw
+        #         '0', '0', '0', '0', '0', '0',
+        #         # frame_id child_frame_id
+        #         'horizontal_laser_link', 'laser',
+        #     ],
+        # ),
 
         # odometry
         launch_ros.actions.Node(
@@ -130,6 +119,29 @@ def generate_launch_description():
             parameters=[
                 launch.substitutions.LaunchConfiguration(variable_name='config_file')
             ],
+        ),
+
+        # TODO split for MPC
+
+        # drive_api
+        launch_ros.actions.Node(
+            package='drive_api',
+            executable='drive_api_node',
+            output='screen',
+            name='drive_api',
+            parameters=[
+                launch.substitutions.LaunchConfiguration(variable_name='config_file')
+            ],
+        ),
+
+        launch_ros.actions.Node(
+            package='kinematic_mpc',
+            executable='mpc_node',
+            output='screen',
+            name='kinematic_mpc',
+            # parameters=[
+            #     launch.substitutions.LaunchConfiguration(variable_name='config_file')
+            # ],
         ),
 
     ])

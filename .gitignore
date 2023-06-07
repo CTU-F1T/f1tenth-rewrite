@@ -59,5 +59,6 @@ __pycache__
 /src/vehicle_platform/teensy_drive/
 /src/vehicle_platform/vesc/
 /src/perception/sensors/ros2_razor_imu/
+/src/perception/recognition/particle_filter/
 /src/simulation/stage/
 /src/simulation/stage_ros2/

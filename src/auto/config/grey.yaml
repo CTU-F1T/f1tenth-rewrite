@@ -26,13 +26,13 @@
           min: 8759
           max: 5980
       steering:
-        calm_value: 9165
+        calm_value: 9490
         left:
-          min: 9072
-          max: 8865
+          min: 9400
+          max: 6986
         right:
-          min: 9465
-          max: 11918
+          min: 9550
+          max: 12000
     angular_steering:
       left_max: 29.106255993  # deg
       right_max: 27.330086828  # deg
@@ -55,3 +55,28 @@
     servo_min: 0.15
     speed_max: 23250.0
     speed_min: -23250.0
+/vesc_to_odom:
+  ros__parameters:
+    speed_to_erpm_gain: 4614.0
+    speed_to_erpm_offset: 0.0
+    steering_angle_to_servo_gain: -1.2135
+    steering_angle_to_servo_offset: 0.5304
+    odom_frame: odom
+    base_frame: base_link
+    publish_tf: true
+    use_servo_cmd_to_calc_angular_velocity: true
+    wheelbase: 0.25
+/pwm_to_steer:
+  ros__parameters:
+    pwm:
+      steering:
+        calm_value: 9490
+        left:
+          min: 9400
+          max: 6986
+        right:
+          min: 9550
+          max: 12000
+    angular_steering:
+      left_max: 29.106255993  # deg
+      right_max: 27.330086828  # deg

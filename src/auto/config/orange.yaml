@@ -1,0 +1,82 @@
+/drive_api:
+  ros__parameters:
+    drive_battery:
+      cells: 2
+      cell_voltage: 3.7  # V
+    motor:
+      # to_erpm is calculated
+      # erpm_max is calculated
+      back_emf: 3500
+      poles: 4
+      limit: 0
+      pinion: 13
+    differential:
+      spur: 54
+      pinion: 13
+      ring: 37
+    wheels:
+      radius: 0.055  # m
+    pwm:
+      throttle:
+        calm_value: 8959
+        forward:
+          min: 9159
+          max: 11914
+        backward:
+          min: 8759
+          max: 5980
+      steering:
+        calm_value: 9311
+        left:
+          min: 9290
+          max: 6807
+        right:
+          min: 9350
+          max: 11815
+    angular_steering:
+      left_max: 29.106255993  # deg
+      right_max: 27.330086828  # deg
+    run_mode: basic_vesc
+/teensy_drive:
+  ros__parameters:
+    port: /dev/tty.teensy
+/vesc:
+  ros__parameters:
+    port: /dev/tty.vesc
+    brake_max: 200000.0
+    brake_min: -20000.0
+    current_max: 100.0
+    current_min: 0.0
+    duty_cycle_max: 0.0
+    duty_cycle_min: 0.0
+    position_max: 0.0
+    position_min: 0.0
+    servo_max: 0.85
+    servo_min: 0.15
+    speed_max: 23250.0
+    speed_min: -23250.0
+/vesc_to_odom:
+  ros__parameters:
+    speed_to_erpm_gain: -4614.0  #4614
+    speed_to_erpm_offset: 0.0
+    steering_angle_to_servo_gain: 1.15
+    steering_angle_to_servo_offset: 0.0
+    odom_frame: odom
+    base_frame: base_link
+    publish_tf: true #false
+    use_servo_cmd_to_calc_angular_velocity: true
+    wheelbase: 0.33
+/pwm_to_steer:
+  ros__parameters:
+    pwm:
+      steering:
+        calm_value: 9311
+        left:
+          min: 9290
+          max: 6807
+        right:
+          min: 9350
+          max: 11815
+    angular_steering:
+      left_max: 29.106255993  # deg
+      right_max: 27.330086828  # deg

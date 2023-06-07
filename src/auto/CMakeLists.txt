@@ -12,7 +12,7 @@ set(AUTO_CLI_VERSION "0.0.1")
 
 # install config and launch files
 install(
-  DIRECTORY launch config scripts/auto-cli
+  DIRECTORY launch urdf config scripts/auto-cli
   DESTINATION share/${PROJECT_NAME}
 )
 # install Auto CLI

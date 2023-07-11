@@ -37,6 +37,7 @@
       left_max: 29.106255993  # deg
       right_max: 27.330086828  # deg
     run_mode: basic_vesc
+    publish_rate: 40
 /teensy_drive:
   ros__parameters:
     port: /dev/tty.teensy
@@ -57,10 +58,10 @@
     speed_min: -23250.0
 /vesc_to_odom:
   ros__parameters:
-    speed_to_erpm_gain: -4614.0  #4614
+    speed_to_erpm_gain: -4105.0
     speed_to_erpm_offset: 0.0
-    steering_angle_to_servo_gain: 1.15
-    steering_angle_to_servo_offset: 0.0
+    steering_angle_to_servo_gain: 1.35  # 1.2
+    steering_angle_to_servo_offset: 0.00  # 0.015
     odom_frame: odom
     base_frame: base_link
     publish_tf: true #false

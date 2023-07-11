@@ -132,6 +132,9 @@ def generate_launch_description():
             parameters=[
                 launch.substitutions.LaunchConfiguration(variable_name='config_file')
             ],
+            # remappings=[
+            #     ('/sensors/servo_position_command', '/not_used/servo_position_command'),
+            # ],
         ),
 
         launch_ros.actions.Node(

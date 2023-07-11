@@ -6,8 +6,9 @@
 #define MPC_CONSTANTS_H
 
 // model constants
-#define NX 4 // number of states X = [x, y, yaw angle, vx]
+#define NX 5 // number of states X = [x, y, yaw angle, vx]
 #define NU 2 // number of inputs U = [a, steer]
+#define NX_TRAJ 8 // number of parameters of a state in the trajectory
 
 // control constants
 // #define NK 15

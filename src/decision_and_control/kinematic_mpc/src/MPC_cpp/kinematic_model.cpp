@@ -20,8 +20,9 @@ namespace mpc {
 
         f[SX] = state[VX] * cos(state[YAW]);
         f[SY] = state[VX] * sin(state[YAW]);
-        f[YAW] = state[VX] / wheelbase * tan(input[STEER]);
+        f[YAW] = state[VX] / wheelbase * tan(state[STEER]);
         f[VX] = input[ACC];
+        f[STEER] = input[STEER_V];
 
         return f;
     }
@@ -31,20 +32,20 @@ namespace mpc {
 
         // input inequality constraints
         uMin << max_dcc, // acceleration
-                min_steer_angle; // steering
+                -max_steer_vel; // steering speed
 
         uMax << max_acc,
-                max_steer_angle;
+                max_steer_vel;
 
-        // state inequality constraints  [x, y, yaw angle, vx]
-        xMin << -OsqpEigen::INFTY, -OsqpEigen::INFTY, -OsqpEigen::INFTY, min_speed;
+        // state inequality constraints  [x, y, yaw angle, vx, steer]
+        xMin << -OsqpEigen::INFTY, -OsqpEigen::INFTY, -OsqpEigen::INFTY, min_speed, min_steer_angle;
 
-        xMax << OsqpEigen::INFTY, OsqpEigen::INFTY, OsqpEigen::INFTY, max_speed;
+        xMax << OsqpEigen::INFTY, OsqpEigen::INFTY, OsqpEigen::INFTY, max_speed, max_steer_angle;
     }
 
     void KinematicModel::clipInput(Eigen::Matrix<double, NU, 1> &input) {
-        input[STEER] = std::max(input[STEER], min_steer_angle);
-        input[STEER] = std::min(input[STEER], max_steer_angle);
+        input[STEER_V] = std::max(input[STEER_V], -max_steer_vel);
+        input[STEER_V] = std::min(input[STEER_V], max_steer_vel);
 
         input[ACC] = std::max(input[ACC], max_dcc);
         input[ACC] = std::min(input[ACC], max_acc);
@@ -53,6 +54,9 @@ namespace mpc {
     void KinematicModel::clipOutput(Eigen::Matrix<double, NX, 1> &state) {
         state[VX] = std::max(state[VX], min_speed);
         state[VX] = std::min(state[VX], max_speed);
+
+        state[STEER] = std::max(state[STEER], min_steer_angle);
+        state[STEER] = std::min(state[STEER], max_steer_angle);
     }
 
     void KinematicModel::linearizeInPoint(Eigen::Matrix<double, NX, NX> &a,
@@ -64,19 +68,23 @@ namespace mpc {
 
         double wheelbase = lf + lr;
 
-        a << 1.0, 0.0, -dt * state[VX] * sin(state[YAW]), dt * cos(state[YAW]),
-                0.0, 1.0, dt * state[VX] * cos(state[YAW]), dt * sin(state[YAW]),
-                0.0, 0.0, 1.0, dt / wheelbase * tan(input[STEER]),
-                0.0, 0.0, 0.0, 1.0;
+        a << 1.0, 0.0, -dt * state[VX] * sin(state[YAW]), dt * cos(state[YAW]), 0.0,
+                0.0, 1.0, dt * state[VX] * cos(state[YAW]), dt * sin(state[YAW]), 0.0,
+                0.0, 0.0, 1.0, dt * tan(state[STEER]) / wheelbase, dt * state[VX] / (wheelbase * cos(state[STEER]) * cos(state[STEER])),
+                0.0, 0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 0.0, 1.0;
+
 
         b << 0.0, 0.0,
                 0.0, 0.0,
-                0.0, dt * state[VX] / (wheelbase * cos(input[STEER]) * cos(input[STEER])),
-                dt, 0.0;
+                0.0, 0.0,
+                dt, 0.0,
+                0.0, dt;
 
         c << dt * state[VX] * sin(state[YAW]) * state[YAW],
-                - dt * state[VX] * cos(state[YAW]) * state[YAW],
-                -dt * state[VX] * input[STEER] / (wheelbase * cos(input[STEER]) * cos(input[STEER])),
+                -dt * state[VX] * cos(state[YAW]) * state[YAW],
+                -dt * state[VX] * state[STEER] / (wheelbase * cos(state[STEER]) * cos(state[STEER])),
+                0.0,
                 0.0;
     }
 

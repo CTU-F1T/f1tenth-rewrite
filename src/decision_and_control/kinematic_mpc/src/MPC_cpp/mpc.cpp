@@ -280,8 +280,10 @@ namespace mpc {
                 Eigen::Matrix<double, NU, 1>::Zero());
 
         // Initialization of vector of reference trajectory patch needed for optimization (this is not for storing the whole trajectory)
-        patch_ref_trajectory = std::vector < Eigen::Matrix < double, NX, 1 >> (this->prediction_horizon,
-                Eigen::Matrix<double, NX, 1>::Zero());
+        patch_ref_trajectory = std::vector < Eigen::Matrix < double, NX, 1 >> (this->prediction_horizon, Eigen::Matrix<double, NX, 1>::Zero());
+
+
+        patch_ref_trajectory_info = std::vector < Eigen::Matrix < double, 2, 1 >> (this->prediction_horizon, Eigen::Matrix<double, 2, 1>::Zero());
 
         solver.settings()->setWarmStart(true);
         solver.settings()->setVerbosity(false);
@@ -294,41 +296,57 @@ namespace mpc {
     }
 
     void MPC::GetPatchOfRefenceTrajecotry() {
-        bool first_iter_check = last_nearest_point_id == -1;
-        auto curr_size = first_iter_check ? reference_trajectory.size() : (int)(1.4 * this->prediction_horizon);
+        double diff = reference_trajectory.at(1)[0];
+        auto curr_size = reference_trajectory.size();
         Eigen::MatrixXd original_2d_traj(2, curr_size);
-        int step_back = 5;
 
         for (int i = 0; i < curr_size; i++) {
-            auto id = first_iter_check ? i : ((last_nearest_point_id - step_back + i) + reference_trajectory.size()) % reference_trajectory.size();
+            auto id = i;
             auto point = reference_trajectory.at(id);
-            Eigen::Matrix<double, 2, 1> converted = point.block(1, 0, 2, 1);
+            Eigen::Matrix<double, 2, 1> converted = point.block(1, 0, 2, 1); //check
             original_2d_traj.col(i) = converted;
         }
 
-        #pragma omp parallel for
-        for (int i = 0; i < lin_trajectory.size(); i++) {
-            auto point = lin_trajectory.at(i);
-            Eigen::Matrix<double, 2, 1> converted = point.block(0, 0, 2, 1);
-            Eigen::Matrix<double, 2, 1> out_point;
-            double out_dist;
-            double out_t;
-            int out_index;
-            this->NearestPoint(converted, out_point, out_dist, out_t, out_index, original_2d_traj);
-            out_index = first_iter_check ? out_index : ((out_index - step_back + last_nearest_point_id) + reference_trajectory.size()) % reference_trajectory.size();
-            int next_index = (out_index + 1) % reference_trajectory.size();
+        auto point = lin_trajectory.at(0);
+        Eigen::Matrix<double, 2, 1> converted = point.block(0, 0, 2, 1);
+        Eigen::Matrix<double, 2, 1> out_point;
+        double out_dist;
+        double out_t;
+        int out_index;
+        this->NearestPoint(converted, out_point, out_dist, out_t, out_index, original_2d_traj);
+        int next_index = (out_index + 1) % reference_trajectory.size();
+
+        Eigen::Matrix<double, NX, 1> first_traj_point = Eigen::Matrix<double, NX, 1>::Zero();
+        first_traj_point.block(0, 0, 2, 1) = out_point;
+        first_traj_point(2) = reference_trajectory.at(next_index)(3);
+        first_traj_point(3) = reference_trajectory.at(out_index)(5) * out_t + reference_trajectory.at(next_index)(5) * (1 - out_t);
+        first_traj_point(4) = reference_trajectory.at(next_index)(7);
+
+        patch_ref_trajectory.at(0) = first_traj_point;
+        last_nearest_point_id = out_index;
+        double prev_t = 0;
+
+        for (int i = 1; i < lin_trajectory.size(); i++) {
+            double progress = ((patch_ref_trajectory.at(i-1)(3) * dt) / diff) + prev_t;
+            int offset = (int)progress;
+            double t = progress - offset;
+            int first_idx = (last_nearest_point_id + offset) % reference_trajectory.size();
+            int second_idx = (first_idx + 1) % reference_trajectory.size();
 
             Eigen::Matrix<double, NX, 1> new_traj_point = Eigen::Matrix<double, NX, 1>::Zero();
-            new_traj_point.block(0, 0, 2, 1) = out_point;
-            Eigen::Matrix<double, 2, 1> vec = reference_trajectory.at(next_index).block(1, 0, 2, 1) - out_point;
-            new_traj_point(2) = atan2(vec(1), vec(0));
-            new_traj_point(3) = reference_trajectory.at(out_index)(5) * out_t + reference_trajectory.at(next_index)(5) * (1 - out_t);
+            Eigen::Matrix<double, NX_TRAJ, 1> new_point = reference_trajectory.at(first_idx) * t + reference_trajectory.at(second_idx) * (1 - t);
+            new_traj_point(0) = new_point(1);
+            new_traj_point(1) = new_point(2);
+            new_traj_point(2) = new_point(3);
+            new_traj_point(3) = new_point(5);
+            new_traj_point(4) = new_point(7);
 
             patch_ref_trajectory.at(i) = new_traj_point;
-            if (i == 0)
-            {
-                last_nearest_point_id = out_index;
-            }
+            patch_ref_trajectory_info.at(i)[0] = new_traj_point(4);
+            patch_ref_trajectory_info.at(i)[1] = 0.0;
+
+            last_nearest_point_id = first_idx;
+            prev_t = t;
         }
     }
 

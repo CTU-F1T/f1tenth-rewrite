@@ -13,9 +13,10 @@
 #define SY 1
 #define YAW 2
 #define VX 3
+#define STEER 4
 
 #define ACC 0
-#define STEER 1
+#define STEER_V 1
 
 
 namespace mpc {
@@ -27,6 +28,7 @@ namespace mpc {
         double min_speed = 0.0; // [m/s]
         double max_acc = 6.0; // [m/s/s]
         double max_dcc = -10.0; // [m/s/s]
+        double max_steer_vel = 2.0; // [rad/s]
         double max_steer_angle = 0.4; // [rad]
         double min_steer_angle = -0.4; // [rad]
         double lr = 0.17; // [m]

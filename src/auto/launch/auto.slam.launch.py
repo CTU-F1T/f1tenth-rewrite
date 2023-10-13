@@ -25,17 +25,6 @@ def generate_launch_description():
             msg=['using config file = ', launch.substitutions.LaunchConfiguration(variable_name='config_file')],
         ),
 
-        # # obstacle_substitution
-        # launch.actions.IncludeLaunchDescription(
-        #     launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
-        #         launch_file_path=launch.substitutions.PathJoinSubstitution([
-        #             launch_ros.substitutions.FindPackageShare(package='obstacle_substitution'),
-        #             'start.launch.py'
-        #         ]),
-        #     ),
-        #     launch_arguments=[],
-        # ),
-
         # lidar
         launch.actions.IncludeLaunchDescription(
             launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
@@ -43,6 +32,18 @@ def generate_launch_description():
                     launch_ros.substitutions.FindPackageShare(package='auto'),
                     'launch',
                     'ust10lx.launch.py'
+                ]),
+            ),
+            launch_arguments=[],
+        ),
+
+        # imu
+        launch.actions.IncludeLaunchDescription(
+            launch_description_source=launch.launch_description_sources.PythonLaunchDescriptionSource(
+                launch_file_path=launch.substitutions.PathJoinSubstitution([
+                    launch_ros.substitutions.FindPackageShare(package='ros2_razor_imu'),
+                    'launch',
+                    'razor-pub.launch.py'
                 ]),
             ),
             launch_arguments=[],

@@ -305,6 +305,8 @@ public:
 private:
 
   void vescStateCallback(const vesc_msgs::msg::VescStateStamped::SharedPtr state) {
+    
+    // This is not used anymore
 
     // convert to engineering units
     double current_speed = (-state->state.speed - 0.0) / -4105.0;
@@ -329,6 +331,7 @@ private:
 //      this->drive_steering_angle = 0.0;
       std::cout << "MPC not successful for too many iterations..." << std::endl;
     }else {
+      // TODO Add iteration through the plan ... 
       this->control_lock.lock();
       int command_id = this->iter_since_last_succ;
       this->drive_speed += this->inputs_plan_copy[0][0] * 0.02;

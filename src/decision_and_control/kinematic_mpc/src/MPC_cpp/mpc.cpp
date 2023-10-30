@@ -2,6 +2,20 @@
 // Created by tomas on 3/17/23.
 //
 
+
+/*
+ Program formulation:
+ 
+ optimization parameters: x
+
+ min 1/2 x^T P x + q^T x
+ s.t. L <= Ax <= U
+
+ For more information on casting MPC problem to OSQP see (Not exactly as ours but close enough): https://robotology.github.io/osqp-eigen/md_pages_mpc.html
+
+*/
+
+
 #include "mpc.h"
 
 #include <utility>
@@ -9,13 +23,22 @@
 
 namespace mpc {
 
+    /* TODO Constant parts of these castic methods could be done just once in the class init? Maybe redo them is come static constraints change (e.g. max velocity...)*/
+
     void MPC::CastMPCToQPConstraintMatrix(Eigen::SparseMatrix<double> &constraintMatrix) {
+        /*
+         * Cast to matrix A
+        */
 
         constraintMatrix.resize(
                 NX * this->prediction_horizon + NX * this->prediction_horizon + NU * (this->prediction_horizon - 1),
                 NX * this->prediction_horizon + NU * (this->prediction_horizon - 1)
         );
-
+        
+        /* 
+         * Better to create triplets first and that create sparse matrices from them than to create
+         * sparce matrices element by element
+        */
         std::vector<Eigen::Triplet<double>> triplets;
 
         // populate linear constraint matrix
@@ -56,6 +79,10 @@ namespace mpc {
 
     void MPC::CastMPCToQPHessian(Eigen::SparseMatrix<double> &hessianMatrix) {
 
+        /*
+         * Cast to matrix P
+        */
+
         hessianMatrix.resize(NX * this->prediction_horizon + NU * (this->prediction_horizon - 1),
                              NX * this->prediction_horizon + NU * (this->prediction_horizon - 1));
 
@@ -83,6 +110,10 @@ namespace mpc {
 
     void MPC::CastMPCToQPGradient(const std::vector <Eigen::Matrix<double, NX, 1>> &xRef,
                                   Eigen::VectorXd &gradient) {
+        
+        /*
+         * Cast to vector q
+        */
 
         std::vector <Eigen::Matrix<double, NX, 1>> Qx_ref(this->prediction_horizon, Eigen::Matrix<double, NX, 1>::Zero());
 
@@ -103,6 +134,10 @@ namespace mpc {
 
     void MPC::CastMPCToQPConstraintVectors(const Eigen::Matrix<double, NX, 1> &x0,
                                            Eigen::VectorXd &lowerBound, Eigen::VectorXd &upperBound) {
+
+        /*
+         * Cast to vectors L and U
+        */
 
         lowerBound.resize(2 * NX * this->prediction_horizon + NU * (this->prediction_horizon - 1), 1);
         upperBound.resize(2 * NX * this->prediction_horizon + NU * (this->prediction_horizon - 1), 1);
@@ -155,6 +190,10 @@ namespace mpc {
                   std::vector <Eigen::Matrix<double, NX, 1>> &predicted_traj,
                   std::vector <Eigen::Matrix<double, NX, 1>> &reference,
                   Eigen::Matrix<double, NX, 1> &x0) {
+
+        /*
+         * Get reference and solve optimization problem.
+        */
 
         std::chrono::time_point<std::chrono::high_resolution_clock> start;
         std::chrono::time_point<std::chrono::high_resolution_clock> stop;
@@ -242,6 +281,41 @@ namespace mpc {
         Eigen::VectorXd QPSolution;
 
         if (solver.solveProblem() != OsqpEigen::ErrorExitFlag::NoError) return 1;
+
+        if (solver.getStatus() != OsqpEigen::Status::Solved){
+            switch(solver.getStatus())
+            {
+              case OsqpEigen::Status::MaxIterReached :
+                std::cout << "Solve error:  MaxIterReached" << std::endl;
+                break;
+              case OsqpEigen::Status::PrimalInfeasible :
+                std::cout << "Solve error:  PrimalInfeasible" << std::endl;
+                break;
+              case OsqpEigen::Status::DualInfeasible :
+                std::cout << "Solve error:  DualInfeasible" << std::endl;
+                break;
+              case OsqpEigen::Status::Sigint :
+                std::cout << "Solve error:  Sigint" << std::endl;
+                break;
+              case OsqpEigen::Status::NonCvx :
+                std::cout << "Solve error:  NonCvx" << std::endl;
+                break;
+              case OsqpEigen::Status::Unsolved :
+                std::cout << "Solve error:  Unsolved" << std::endl;
+                break;
+              case OsqpEigen::Status::SolvedInaccurate :
+                std::cout << "Solve error:  SolvedInaccurate" << std::endl;
+                break;
+              case OsqpEigen::Status::PrimalInfeasibleInaccurate :
+                std::cout << "Solve error:  PrimalInfeasibleInaccurate" << std::endl;
+                break;
+              case OsqpEigen::Status::DualInfeasibleInaccurate :
+                std::cout << "Solve error:  DualInfeasibleInaccurate" << std::endl;
+                break;
+            }
+            return 1;
+        }
+
         QPSolution = solver.getSolution();
         for (int i = 0; i < this->prediction_horizon; i++) {
             states_plan.at(i) = QPSolution.block(i * NX, 0, NX, 1);
@@ -257,7 +331,6 @@ namespace mpc {
         this->solver_time = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
         return 0;
-
     }
 
     MPC::MPC(double dt, int predictionHorizon, KinematicModel model, Eigen::DiagonalMatrix<double, NX> Q, Eigen::DiagonalMatrix<double, NU> R,
@@ -288,7 +361,7 @@ namespace mpc {
         solver.settings()->setWarmStart(true);
         solver.settings()->setVerbosity(false);
         solver.settings()->setPolish(true);
-        solver.settings()->setAbsoluteTolerance(0.01);
+        solver.settings()->setAbsoluteTolerance(0.01);  // Should be good enough precision
         solver.settings()->setRelativeTolerance(0.01);
 
         solver.data()->setNumberOfVariables(NX * this->prediction_horizon + NU * (this->prediction_horizon - 1));
@@ -296,6 +369,10 @@ namespace mpc {
     }
 
     void MPC::GetPatchOfRefenceTrajecotry() {
+
+        /* This could be improved */
+        /* Get some part of the full reference trajectory that will be used in calculating MPC over predistion horizon. */
+
         double diff = reference_trajectory.at(1)[0];
         auto curr_size = reference_trajectory.size();
         Eigen::MatrixXd original_2d_traj(2, curr_size);
@@ -352,6 +429,13 @@ namespace mpc {
 
     void MPC::NearestPoint(const Eigen::Matrix<double, 2, 1> &point, Eigen::Matrix<double, 2, 1> &out_point, double &out_dist,
                            double &out_t, int &out_index, Eigen::MatrixXd &trajectory) {
+
+        /* TODO this could be improved */
+
+        /* Cannot handle intersections of the trajectory. To do this we would need to add last trajectory point so we cannot "jump" on the reference */
+
+        /* Get closest trajectory point to the car so we can later choose corrent trajectory patch. */
+        
         int first_point;
         Eigen::MatrixXd point_rep = Eigen::MatrixXd::Constant(1, trajectory.cols(), point(0));
         Eigen::VectorXd diff_x = trajectory.row(0) - point_rep;

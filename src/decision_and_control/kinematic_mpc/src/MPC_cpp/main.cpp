@@ -2,6 +2,9 @@
 #include "mpc.h"
 #include "kinematic_model.h"
 
+/* !!!!!!!!!!Not usable!!!!!!!!!! Currently just test of the initialization. */
+/* Please launch it using ros node for now */
+
 int main() {
 
     // Definition of parameters

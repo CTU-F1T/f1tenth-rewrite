@@ -7,8 +7,13 @@
 
 #include "OsqpEigen/OsqpEigen.h"
 #include "constants.h"
-// reference point - center of rear axle
 
+// reference point - center of rear axle  -- 1
+// reference point - center of gravity  -- 2
+//#define TEMP_MODEL_SWITCH 1
+
+// We should not need theese definitions because we want to have more models
+// I do not know how to properly compile static matrices without theese -> maybe const var can help ? 
 #define SX 0
 #define SY 1
 #define YAW 2
@@ -23,14 +28,15 @@ namespace mpc {
 
     class KinematicModel {
     public:
+        // TODO Be able to change theese from "outside" e.g. from ros node
         // model parameters
         double max_speed = 5.0; // [m/s]
         double min_speed = 0.0; // [m/s]
         double max_acc = 6.0; // [m/s/s]
         double max_dcc = -10.0; // [m/s/s]
-        double max_steer_vel = 2.0; // [rad/s]
-        double max_steer_angle = 0.4; // [rad]
-        double min_steer_angle = -0.4; // [rad]
+        double max_steer_vel = 2.5; // [rad/s]
+        double max_steer_angle = 0.37; // [rad]
+        double min_steer_angle = -0.37; // [rad]
         double lr = 0.17; // [m]
         double lf = 0.158; // [m]
         double predict_horizon;

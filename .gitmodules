@@ -1,0 +1,3 @@
+[submodule "src/decision_and_control/overtaking_controller"]
+	path = src/decision_and_control/overtaking_controller
+	url = git@github.com:atomyks/overtaking_controller.git

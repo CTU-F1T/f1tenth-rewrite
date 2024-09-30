@@ -24,6 +24,9 @@ Desktop.ini
 *.local.*
 *.local
 
+# Data
+*.npy
+
 
 ### PROJECT
 

@@ -192,6 +192,16 @@ class DriveApiNode(Node):
         self.dapi_cmds_subscription = None
         self.cmds_subscription = None
 
+        # This is used can be used by high level controllers to correct
+        # time tracking.
+        self.additional_velocity = 0.0
+        self.additional_velocity_sub = self.create_subscription(
+            msg_type=Float64,
+            topic='time_dist_err',
+            callback=self.additional_velocity_callback,
+            qos_profile=1,
+        )
+
         if USE_DAPI_COMMANDS:
             self.dapi_cmds_subscription = self.create_subscription(
                 msg_type=DriveApiValues,
@@ -708,7 +718,7 @@ class DriveApiNode(Node):
                     return True
 
                 if self.run_mode == RunMode.ACKERMANN_DRIVE:
-                    self.msg_ackermann.drive.speed = speed * 7.0 - self.time_err_dist
+                    self.msg_ackermann.drive.speed = speed * 7.0 - self.additional_velocity
                     return True
 
                 if self.run_mode == RunMode.BASIC_VESC:
@@ -785,7 +795,7 @@ class DriveApiNode(Node):
                 return True
 
             if self.run_mode == RunMode.ACKERMANN_DRIVE:
-                self.msg_ackermann.drive.speed = speed - self.time_err_dist
+                self.msg_ackermann.drive.speed = speed - self.additional_velocity
                 return True
 
             if self.run_mode == RunMode.BASIC_VESC:
@@ -1120,6 +1130,8 @@ class DriveApiNode(Node):
 
         pass
 
+    def additional_velocity_callback(self, data: Float64):
+        self.additional_velocity = data.data
 
 pass
 

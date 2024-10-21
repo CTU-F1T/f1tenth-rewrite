@@ -1,5 +1,5 @@
 # Self-documenting Makefile
-# Version: s7
+# Version: s8
 # Source: https://github.com/jara001/Makefile
 # Originally:
 # Self-documenting Makefile by prwhite
@@ -18,9 +18,9 @@ export PYTHONWARNINGS
 help: ## Show this help message.
 	@echo "Usage: make [target] ..."
 	@echo
-	@echo "Targets:"
-	@grep --color=auto -F "## " $(MAKEFILE_LIST) | grep --color=auto -F -v grep | sed -e "s/\\$$//" | sed -e "s/##//" | column -c2 -t -s :
-	@grep "##@[^ \"]*" $(MAKEFILE_LIST) | grep --color=auto -F -v grep | sed -e "s/^.*##@\\([a-zA-Z][a-zA-Z]*\\).*\$$/\1/" | sed "/^\\$$/d" | sort | uniq | xargs -I'{}' -n 1 bash -c "echo; echo {} targets:; grep '##@{}' $(MAKEFILE_LIST) | sed -e 's/##@{}//' | column -c2 -t -s :"
+	@echo -n "Targets:"
+	@grep --color=auto -F "## " $(MAKEFILE_LIST) | grep --color=auto -F -v grep | sed -e "s/\\$$//" | sed -e "s/##//" | awk -F: '{ if (width < length($$1)) { width=length($$1) }; key[NR] = $$1; value[NR] = $$2; } END { format = sprintf("%%-%ds  %%s\n", width); for (;i <= NR; i++) { printf format, key[i], value[i]; } }'
+	@grep "##@[^ \"]*" $(MAKEFILE_LIST) | grep --color=auto -F -v grep | sed -e "s/^.*##@\\([a-zA-Z][a-zA-Z]*\\).*\$$/\1/" | sed "/^\\$$/d" | sort | uniq | { while read line; do echo; echo -n $$line targets:; grep "##@$$line" $(MAKEFILE_LIST) | sed -e "s/##@$$line//" | awk -F: '{ if (width < length($$1)) { width=length($$1) }; key[NR] = $$1; value[NR] = $$2; } END { format = sprintf("%%-%ds  %%s\n", width); for (;i <= NR; i++) { printf format, key[i], value[i]; } }'; done }
 	@$(RM) -r '$(TMP_DIR)'
 
 
